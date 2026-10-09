@@ -26,12 +26,15 @@ const hesapVarMi = (h) => /already-in-use|account-exists|credential-already/i.te
 
 function kullaniciBicim(u) {
   if (!u) return null;
+  // Misafir hesap Google'a bağlanınca ad/fotoğraf kullanıcıda boş kalabiliyor
+  // (Android eklentisi); o zaman Google sağlayıcı bilgisinden alınır.
+  const google = (u.providerData || []).find((p) => p.providerId === 'google.com') || {};
   return {
     uid: u.uid,
     misafir: !!u.isAnonymous,
-    ad: u.displayName || '',
-    eposta: u.email || '',
-    foto: u.photoUrl || u.photoURL || '',
+    ad: u.displayName || google.displayName || '',
+    eposta: u.email || google.email || '',
+    foto: u.photoUrl || u.photoURL || google.photoUrl || google.photoURL || '',
   };
 }
 
