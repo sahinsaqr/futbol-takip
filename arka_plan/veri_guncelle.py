@@ -17,6 +17,10 @@ TAM_ARALIK = 20 * 3600       # tam güncelleme en az bu kadar saniyede bir
 HIZLI_ARALIK = 3 * 3600      # hızlı güncelleme en az bu kadar saniyede bir
 
 
+class GuncellemeHatasi(Exception):
+    """Hiçbir lig güncellenemediğinde atılır."""
+
+
 def lig_dosyasi(kod):
     return VERI / f"lig_{kod}.json"
 
@@ -29,7 +33,7 @@ def lig_guncelle(lig, tam):
     if tam:
         yeni = espn.sezon_maclari(kod, geri_gun=150, ileri_gun=240)
     else:
-        yeni = espn.sezon_maclari(kod, geri_gun=3, ileri_gun=10, parca_gun=14)
+        yeni = espn.sezon_maclari(kod, geri_gun=3, ileri_gun=10)
     maclar.update(yeni)
 
     # Çok eski maçları at (dosya büyümesin)
@@ -91,6 +95,7 @@ def guncelle(mod="otomatik"):
     print(f"Veri güncelleme başlıyor ({mod})")
     eski_ligler = {l["kod"]: l for l in (json_oku(VERI / "ligler.json", {}) or {}).get("ligler", [])}
     ligler = []
+    basarili = 0
     for lig in ayarlar()["ligler"]:
         print(f"- {lig['ad']} ({lig['kod']})")
         try:
@@ -100,6 +105,7 @@ def guncelle(mod="otomatik"):
             if lig["kod"] in eski_ligler:
                 ligler.append(eski_ligler[lig["kod"]])
             continue
+        basarili += 1
         eski_takimlar = eski_ligler.get(lig["kod"], {}).get("takimlar", [])
         ligler.append({
             **lig,
@@ -107,6 +113,10 @@ def guncelle(mod="otomatik"):
         })
         print(f"  {len(maclar)} maç, {sum(len(t['satirlar']) for t in tablolar)} tablo satırı")
         time.sleep(0.5)
+
+    if not basarili:
+        # durum.json'a yazma: sonraki çalışma güncellemeyi yeniden denesin
+        raise GuncellemeHatasi("Hiçbir lig güncellenemedi")
 
     json_yaz(VERI / "ligler.json", {"guncelleme": iso(), "ligler": ligler})
     durum["son_hizli"] = iso()
@@ -117,4 +127,8 @@ def guncelle(mod="otomatik"):
 
 
 if __name__ == "__main__":
-    guncelle(sys.argv[1] if len(sys.argv) > 1 else "otomatik")
+    try:
+        guncelle(sys.argv[1] if len(sys.argv) > 1 else "otomatik")
+    except GuncellemeHatasi as h:
+        print(f"HATA: {h}")
+        sys.exit(1)

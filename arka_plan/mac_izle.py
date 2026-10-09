@@ -12,6 +12,7 @@ Ortam değişkenleri:
 """
 import json
 import os
+import sys
 import time
 import urllib.request
 from collections import defaultdict
@@ -235,7 +236,10 @@ def izle():
 
     if izlenen_var:
         canli_yaz(son_durum, b)
-        veri_guncelle.guncelle("hizli")
+        try:
+            veri_guncelle.guncelle("hizli")
+        except veri_guncelle.GuncellemeHatasi as h:
+            print(f"Maç sonrası güncelleme başarısız: {h}")
         git_gonder("Maç sonrası veriler güncellendi")
 
 
@@ -251,6 +255,13 @@ def canli_yaz(son_durum, b):
 
 
 if __name__ == "__main__":
-    veri_guncelle.guncelle("otomatik")
+    hata = None
+    try:
+        veri_guncelle.guncelle("otomatik")
+    except veri_guncelle.GuncellemeHatasi as h:
+        hata = h
+        print(f"HATA: {h}")
     git_gonder("Fikstür ve puan durumu güncellendi")  # değişiklik yoksa bir şey yapmaz
-    izle()
+    izle()  # veri güncellenemese de canlı maç izleme ve bildirimler sürsün
+    if hata:
+        sys.exit(1)

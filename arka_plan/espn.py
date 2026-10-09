@@ -158,38 +158,61 @@ def gun_maclari(lig_kodu, gun):
     return [m for m in (mac_sadele(e, lig_kodu) for e in veri.get("events", [])) if m]
 
 
-def aralik_maclari(lig_kodu, baslangic, bitis):
-    """Tarih aralığındaki maçları getirir.
+YEDEK_GUN_SINIRI = 21   # takvim alınamazsa en fazla bu kadar gün tek tek istenir
 
-    ESPN geniş aralıklarda hata verebildiği için aralığı gerektiğinde
-    ikiye bölerek tekrar dener.
-    """
-    url = f"{SITE}/{lig_kodu}/scoreboard?dates={baslangic:%Y%m%d}-{bitis:%Y%m%d}&limit=400"
+
+def _gun(metin):
+    """"2026-08-14T07:00Z" gibi bir metnin tarih kısmını date olarak verir."""
     try:
-        veri = getir(url, deneme=2)
-        olaylar = veri.get("events", [])
-        # Sonuç sınıra dayandıysa eksik gelmiş olabilir; böl.
-        if len(olaylar) < 400 or baslangic >= bitis:
-            return [m for m in (mac_sadele(e, lig_kodu) for e in olaylar) if m]
-    except VeriHatasi:
-        if baslangic >= bitis:
-            raise
-    orta = baslangic + (bitis - baslangic) // 2
-    sol = aralik_maclari(lig_kodu, baslangic, orta)
-    sag = aralik_maclari(lig_kodu, orta + timedelta(days=1), bitis)
-    return sol + sag
+        return date.fromisoformat(str(metin)[:10])
+    except ValueError:
+        return None
 
 
-def sezon_maclari(lig_kodu, geri_gun, ileri_gun, parca_gun=21):
+def mac_gunleri(lig_kodu):
+    """Ligin takvimindeki günleri verir (tarihsiz scoreboard isteğinden).
+
+    ESPN tarih aralığı isteklerini artık kabul etmediği için maçlar gün gün
+    çekilir; takvim (liglerde) sadece maç olan günlere istek atmayı sağlar.
+    """
+    veri = getir(f"{SITE}/{lig_kodu}/scoreboard")
+    takvim = ((veri.get("leagues") or [{}])[0]).get("calendar") or []
+    gunler = set()
+    for oge in takvim:
+        if not isinstance(oge, dict):
+            if g := _gun(oge):
+                gunler.add(g)
+            continue
+        # Kupalarda (UEFA) takvim maç günlerini değil tur aralıklarını verir;
+        # maç kaçmasın diye aralıklardaki her gün alınır.
+        for aralik in oge.get("entries") or [oge]:
+            bas, son = _gun(aralik.get("startDate")), _gun(aralik.get("endDate"))
+            if bas and son:
+                gunler.update(bas + timedelta(days=i) for i in range((son - bas).days + 1))
+            elif bas or son:
+                gunler.add(bas or son)
+    if not gunler:
+        raise VeriHatasi(f"{lig_kodu}: takvim boş")
+    return gunler
+
+
+def sezon_maclari(lig_kodu, geri_gun, ileri_gun):
     bugun = date.today()
     bas = bugun - timedelta(days=geri_gun)
     son = bugun + timedelta(days=ileri_gun)
+    try:
+        gunler = sorted(g for g in mac_gunleri(lig_kodu) if bas <= g <= son)
+    except VeriHatasi as h:
+        print(f"  takvim alınamadı ({h}); bugün çevresindeki en fazla "
+              f"{YEDEK_GUN_SINIRI} gün tek tek isteniyor")
+        # Pencereyi bugünün çevresine al: biraz geri, gerisi ileri
+        bas = max(bas, bugun - timedelta(days=7))
+        son = min(son, bas + timedelta(days=YEDEK_GUN_SINIRI - 1))
+        gunler = [bas + timedelta(days=i) for i in range((son - bas).days + 1)]
     maclar = {}
-    while bas <= son:
-        parca_son = min(bas + timedelta(days=parca_gun - 1), son)
-        for m in aralik_maclari(lig_kodu, bas, parca_son):
+    for gun in gunler:
+        for m in gun_maclari(lig_kodu, gun):
             maclar[m["id"]] = m
-        bas = parca_son + timedelta(days=1)
         time.sleep(0.3)
     return maclar
 
