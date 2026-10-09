@@ -1,13 +1,19 @@
 """Zamanlanmış görevin ana programı.
 
 1. Verileri gerekiyorsa günceller (fikstür, sonuçlar, puan durumu).
-2. Takip edilen takımların yakında başlayacak ya da oynanmakta olan maçı
-   varsa maç bitene kadar dakikada bir skoru kontrol eder ve ntfy ile
-   bildirim gönderir. Maç yoksa hemen kapanır.
+2. ayarlar.json'daki liglerin yakında başlayacak ya da oynanmakta olan maçı
+   varsa maçlar bitene kadar dakikada bir skoru kontrol eder ve her olayı
+   iki takımın FCM konusuna gönderir (bildirim.py). Maç yoksa hemen kapanır.
+   Sunucu kimin neyi takip ettiğini bilmez; bu yüzden tüm maçlar izlenir.
+
+5,5 saat sınırı dolunca görev biter; durum canli.json'da saklandığı için
+sıradaki zamanlanmış görev kaldığı yerden devam eder, aynı olayı tekrar
+bildirmez.
 
 Ortam değişkenleri:
-  NTFY_KONU         : ntfy bildirim konusu (GitHub'da gizli anahtar olarak)
-  UYGULAMA_ADRESI   : bildirime tıklayınca açılacak adres (isteğe bağlı)
+  FIREBASE_HESAP    : FCM servis hesabı (base64), bkz. bildirim.py
+  NTFY_KONU         : isteğe bağlı ntfy konusu; takip.json'daki takımlar için
+  UYGULAMA_ADRESI   : ntfy bildirimine tıklayınca açılacak adres (isteğe bağlı)
   KONTROL_ARALIGI   : kaç saniyede bir kontrol (varsayılan 60)
 """
 import json
@@ -18,9 +24,10 @@ import urllib.request
 from collections import defaultdict
 from datetime import timedelta
 
+import bildirim
 import espn
 import veri_guncelle
-from ortak import (VERI, git_gonder, iso, json_oku, json_yaz, simdi,
+from ortak import (VERI, ayarlar, git_gonder, iso, json_oku, json_yaz, simdi,
                    takip_edilenler, zaman_oku)
 
 ILERI_BAK = timedelta(minutes=80)       # bu süre içinde başlayacak maçları bekle
@@ -37,10 +44,16 @@ ERTELENDI = {"STATUS_POSTPONED", "STATUS_CANCELED", "STATUS_ABANDONED",
 
 # ------------------------------------------------------------ bildirim
 
-def bildir(baslik, mesaj, etiketler=("soccer",), oncelik=4):
-    print(f"[BİLDİRİM] {baslik} | {mesaj}")
+def bildir(m, tur, olay, baslik, mesaj, etiketler=("soccer",), oncelik=4):
+    """Olayı maçın iki takımının `tur` konusuna (FCM) ve varsa ntfy'ye gönderir."""
+    bildirim.gonder((m["ev"]["id"], m["dep"]["id"]), tur, baslik, mesaj, m["id"], olay)
+    ntfy_gonder(m, baslik, mesaj, etiketler, oncelik)
+
+
+def ntfy_gonder(m, baslik, mesaj, etiketler, oncelik):
+    """İsteğe bağlı eski yol: NTFY_KONU varsa takip.json'daki takımlar için."""
     konu = os.environ.get("NTFY_KONU", "").strip()
-    if not konu:
+    if not konu or not ({m["ev"]["id"], m["dep"]["id"]} & takip_edilenler()):
         return
     govde = {"topic": konu, "title": baslik, "message": mesaj,
              "tags": list(etiketler), "priority": oncelik}
@@ -84,7 +97,7 @@ def degisiklikleri_bildir(b, eski, yeni):
     kod = yeni["durum_kodu"]
 
     if kod in ERTELENDI:
-        b.bir_kez(f"{mid}:ertelendi", "Maç ertelendi / durduruldu",
+        b.bir_kez(f"{mid}:ertelendi", yeni, "son", "ertelendi", "Maç ertelendi / durduruldu",
                   f"{eslesme(yeni)}", ("warning",))
         return
 
@@ -92,11 +105,11 @@ def degisiklikleri_bildir(b, eski, yeni):
         bas = zaman_oku(yeni["tarih"])
         if bas and timedelta(0) < bas - simdi() <= HATIRLATMA:
             dk = int((bas - simdi()).total_seconds() // 60) + 1
-            b.bir_kez(f"{mid}:hatirlat", f"Maç {dk} dakika sonra başlıyor",
+            b.bir_kez(f"{mid}:hatirlat", yeni, "hat", "hatirlat", f"Maç {dk} dakika sonra başlıyor",
                       eslesme(yeni), ("alarm_clock",), 3)
         return
 
-    b.bir_kez(f"{mid}:basladi", "Maç başladı", eslesme(yeni), ("soccer",))
+    b.bir_kez(f"{mid}:basladi", yeni, "mac", "basladi", "Maç başladı", eslesme(yeni), ("soccer",))
 
     # Goller: skor arttıysa gol, azaldıysa iptal
     eski_ev = (eski or {}).get("ev_skor") or 0
@@ -113,36 +126,35 @@ def degisiklikleri_bildir(b, eski, yeni):
                 g = goller[-1]
                 ek = " (kendi kalesine)" if g["kk"] else " (penaltı)" if g["pen"] else ""
                 ayrinti = f"\n{g['dk']} {g['oyuncu']}{ek}".rstrip()
-            b.bir_kez(f"{mid}:skor:{ev}-{dep}", f"GOL! {atan['ad']}",
+            b.bir_kez(f"{mid}:skor:{ev}-{dep}", yeni, "gol", "gol", f"GOL! {atan['ad']}",
                       skor_metni(yeni) + ayrinti, ("soccer", "tada"), 5)
         else:
-            b.bir_kez(f"{mid}:iptal:{ev}-{dep}", "Gol iptal / skor düzeltildi",
+            b.bir_kez(f"{mid}:iptal:{ev}-{dep}", yeni, "gol", "iptal", "Gol iptal / skor düzeltildi",
                       skor_metni(yeni), ("x",))
             # İptal edilen skor tekrar olursa yeniden bildirilebilsin
             b.gonderilenler.discard(f"{mid}:skor:{eski_ev}-{eski_dep}")
             b.gonderilenler.discard(f"{mid}:iptal:{ev}-{dep}")
 
     if kod == "STATUS_HALFTIME":
-        b.bir_kez(f"{mid}:devre", "Devre arası", skor_metni(yeni), ("hourglass",), 3)
+        b.bir_kez(f"{mid}:devre", yeni, "mac", "devre", "Devre arası", skor_metni(yeni), ("hourglass",), 3)
 
     if yeni["durum"] == "post" or kod in BITTI:
         if ev == dep:
             sonuc = "Berabere"
         else:
             sonuc = f"Kazanan: {(yeni['ev'] if ev > dep else yeni['dep'])['ad']}"
-        b.bir_kez(f"{mid}:bitti", "Maç sona erdi", f"{skor_metni(yeni)}\n{sonuc}",
+        b.bir_kez(f"{mid}:bitti", yeni, "son", "bitti", "Maç sona erdi", f"{skor_metni(yeni)}\n{sonuc}",
                   ("checkered_flag",))
 
 
 # ------------------------------------------------------------- izleme
 
-def takip_maclari(takimlar):
-    """Lig dosyalarından takip edilen takımların maçlarını toplar."""
+def tum_maclar():
+    """ayarlar.json'daki liglerin dosyalarındaki tüm maçları toplar."""
     maclar = {}
-    for dosya in VERI.glob("lig_*.json"):
-        for m in (json_oku(dosya, {}) or {}).get("maclar", []):
-            if m["ev"]["id"] in takimlar or m["dep"]["id"] in takimlar:
-                maclar[m["id"]] = m
+    for lig in ayarlar()["ligler"]:
+        for m in (json_oku(VERI / f"lig_{lig['kod']}.json", {}) or {}).get("maclar", []):
+            maclar[m["id"]] = m
     return maclar
 
 
@@ -170,11 +182,6 @@ def guncel_durum_getir(m):
 
 
 def izle():
-    takimlar = takip_edilenler()
-    if not takimlar:
-        print("takip.json içinde takım yok; izleme yapılmayacak.")
-        return
-
     canli = json_oku(VERI / "canli.json", {}) or {}
     b = Bildirici(canli.get("bildirilenler", []))
     son_durum = {m["id"]: m for m in canli.get("maclar", [])}
@@ -185,7 +192,7 @@ def izle():
 
     while simdi() - baslangic < AZAMI_SURE:
         su_an = simdi()
-        maclar = takip_maclari(takimlar)
+        maclar = tum_maclar()
         # izleme sırasında öğrendiğimiz en güncel durumu kullan
         for mid, m in son_durum.items():
             if mid in maclar:

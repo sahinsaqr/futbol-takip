@@ -1,0 +1,35 @@
+name: Deneme bildirimi
+
+# Bir takım konusuna örnek bildirim gönderir (arka_plan/test_bildirim.py).
+on:
+  workflow_dispatch:
+    inputs:
+      takim:
+        description: "Takım kimliği (ör. Galatasaray: 432)"
+        required: true
+        default: "432"
+      tur:
+        description: "Bildirim türü"
+        type: choice
+        options: [gol, mac, son, hat]
+        default: gol
+
+jobs:
+  gonder:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - run: pip install --quiet firebase-admin==7.7.0
+
+      - name: Bildirimi gönder
+        env:
+          FIREBASE_HESAP: ${{ secrets.FIREBASE_HESAP }}
+          TAKIM: ${{ inputs.takim }}
+          TUR: ${{ inputs.tur }}
+        run: python arka_plan/test_bildirim.py "$TAKIM" "$TUR"

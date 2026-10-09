@@ -30,6 +30,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Bildirim kütüphanesini kur
+        run: pip install --quiet firebase-admin==7.7.0
+
       - name: Git kullanıcısını ayarla
         run: |
           git config user.name "futbol-takip-bot"
@@ -41,6 +44,7 @@ jobs:
 
       - name: Verileri güncelle ve maçları izle
         env:
+          FIREBASE_HESAP: ${{ secrets.FIREBASE_HESAP }}
           NTFY_KONU: ${{ secrets.NTFY_KONU }}
           UYGULAMA_ADRESI: ${{ vars.UYGULAMA_ADRESI }}
           PYTHONUNBUFFERED: "1"
