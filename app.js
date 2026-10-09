@@ -1,22 +1,40 @@
 /* Futbol Takip — takip edilen takımların maçları, canlı skor ve puan durumu.
-   Veriler GitHub'daki Python görevinin ürettiği veri/*.json dosyalarından okunur. */
-'use strict';
+   Veriler GitHub'daki Python görevinin ürettiği veri/*.json dosyalarından okunur.
+   Hesap, takım eşitleme ve bildirim abonelikleri bulut.js üzerinden. */
+import { Bulut, BILDIRIM_TURLERI, VARSAYILAN_BILDIRIM } from './bulut.js';
 
 const DEPO = 'ft_takip';
 const SEKME_DEPO = 'ft_sekme';
+const BILDIRIM_DEPO = 'ft_bildirim';
+const AZAMI_TAKIM = 50;   // Firestore kuralıyla aynı
+// Android'de dosyalar uygulamanın içinden gelir; veri GitHub Pages'ten okunur
+const VERI_KOK = Bulut.yerel ? 'https://sahinsaqr.github.io/futbol-takip/' : '';
+const GIZLILIK_ADRESI = 'https://sahinsaqr.github.io/futbol-takip/gizlilik.html';
+const BILDIRIM_ADLARI = {
+  gol: 'Goller',
+  mac: 'Maç başladı / devre arası',
+  son: 'Maç sonucu',
+  hat: 'Maçtan 15 dk önce hatırlat',
+};
+
+const ilkSekme = depoOku(SEKME_DEPO, 'takimlar');
 const durum = {
   takip: depoOku(DEPO, []),
   ligler: [],
   ligVeri: {},          // kod -> lig_*.json içeriği
   canli: null,
-  sekme: depoOku(SEKME_DEPO, 'takimlar'),
+  sekme: ilkSekme === 'ayarlar' ? 'hesap' : ilkSekme,  // eski sürümdeki "Bildirim" sekmesi
   macSekme: 'yaklasan',
   puanLig: null,
   ekleLig: null,
   arama: '',
   sonYukleme: null,
-  bildirimTakip: null,  // takip.json içeriği
   hata: null,
+  bildirim: { ...VARSAYILAN_BILDIRIM, ...depoOku(BILDIRIM_DEPO, {}) },
+  bulut: 'baglaniyor',  // baglaniyor | hazir | hata
+  islem: false,         // giriş/çıkış/silme sürüyor
+  onay: null,           // sayfa içi onay kutusu: 'sil'
+  hedefMac: null,       // bildirime dokunulunca gidilecek maç
 };
 let yenilemeZamanlayici = null;
 
@@ -51,7 +69,7 @@ const TURKCE_METIN = {
 const turkceMetin = (s) => TURKCE_METIN[s] ?? s;
 
 async function jsonGetir(yol) {
-  const r = await fetch(`${yol}?t=${Date.now()}`, { cache: 'no-store' });
+  const r = await fetch(`${VERI_KOK}${yol}?t=${Date.now()}`, { cache: 'no-store' });
   if (!r.ok) throw new Error(`${yol}: ${r.status}`);
   return r.json();
 }
@@ -141,7 +159,6 @@ async function yukle({ sessiz = false } = {}) {
   await Promise.all([
     ...gerekliLigler().map(ligYukle),
     jsonGetir('veri/canli.json').then((c) => { durum.canli = c; }).catch(() => {}),
-    jsonGetir('takip.json').then((t) => { durum.bildirimTakip = t; }).catch(() => {}),
   ]);
   durum.sonYukleme = new Date();
   btn.classList.remove('donuyor');
@@ -202,10 +219,11 @@ function ciz() {
   document.querySelectorAll('.alt-menu button').forEach((b) =>
     b.classList.toggle('aktif', b.dataset.sekme === durum.sekme));
   const icerik = $('#icerik');
-  const ciziciler = { takimlar: cizTakimlar, maclar: cizMaclar, puan: cizPuan, ekle: cizEkle, ayarlar: cizAyarlar };
-  icerik.innerHTML = (durum.hata && durum.sekme !== 'ayarlar' ? `<div class="uyari">${kacis(durum.hata)}</div>` : '') +
-    (ciziciler[durum.sekme] || cizTakimlar)();
+  const ciziciler = { takimlar: cizTakimlar, maclar: cizMaclar, puan: cizPuan, ekle: cizEkle, hesap: cizHesap };
+  icerik.innerHTML = (durum.hata && durum.sekme !== 'hesap' ? `<div class="uyari">${kacis(durum.hata)}</div>` : '') +
+    (ciziciler[durum.sekme] || cizTakimlar)() + onayKutusu();
   durumSatiri();
+  hedefeGit();
 }
 
 function bosEkran(baslik, metin, dugme = true) {
@@ -281,7 +299,7 @@ function cizTakimlar() {
       parcalar.push(`<div class="mini-mac"><div class="etiket"><span>Son maç · ${kacis(gunEtiketi(new Date(son.tarih), true))}</span><span>${kacis(ligAdi(son.lig))}</span></div>${macHtmlIc(son)}</div>`);
     }
     if (!parcalar.length) parcalar.push('<div class="mini-mac"><div class="etiket"><span>Yakın zamanda maç bulunamadı</span></div></div>');
-    return `<article class="kart takim-kart">
+    return `<article class="kart takim-kart" id="takim-${kacis(t.id)}">
       <div class="takim-ust">${logoHtml(t, '')}
         <div><div class="ad">${kacis(t.ad)}</div><div class="lig">${kacis(ligAdi(t.lig))}${tablo ? ` · ${tablo.sira}. sıra, ${tablo.p} puan` : ''}</div></div>
         <div class="form" title="Son maçlar">${form.map((f) => `<span class="${f}">${f}</span>`).join('')}</div>
@@ -411,61 +429,193 @@ function takimDegistir(id, lig) {
     const l = durum.ligler.find((x) => x.kod === lig);
     const t = l?.takimlar.find((x) => x.id === id);
     if (!t) return;
+    if (durum.takip.length >= AZAMI_TAKIM) { tost(`En fazla ${AZAMI_TAKIM} takım takip edebilirsin`); return; }
+    if (!durum.takip.length) Bulut.bildirimIzniIste().catch(() => {});
     durum.takip.push({ id: t.id, ad: t.ad, kisa: t.kisa, logo: t.logo, lig });
     tost(`${t.ad} eklendi`);
     // bu takımın liglerini yükle
     Promise.all(gerekliLigler().filter((k) => !durum.ligVeri[k]).map(ligYukle)).then(() => ciz());
   }
   depoYaz(DEPO, durum.takip);
+  bulutaKaydet();
   ciz();
   const a = $('#arama');
   if (a && durum.arama) { a.focus(); a.setSelectionRange(a.value.length, a.value.length); }
 }
 
-// ---- Bildirim ayarları
-function depoAdresi() {
-  const h = location.hostname;
-  if (!h.endsWith('.github.io')) return null;
-  const sahip = h.replace('.github.io', '');
-  const ilk = location.pathname.split('/').filter(Boolean)[0];
-  const depo = ilk && !ilk.includes('.') ? ilk : h;
-  return `https://github.com/${sahip}/${depo}`;
+// ---- Bulut eşitleme
+let kayitZamanlayici = null;
+function bulutaKaydet() {
+  if (durum.bulut !== 'hazir') return;  // bağlanınca esitle() birleştirir
+  clearTimeout(kayitZamanlayici);
+  kayitZamanlayici = setTimeout(() => {
+    Bulut.takimlariYaz(durum.takip).catch((h) => console.warn('takımlar kaydedilemedi', h));
+    Bulut.abonelikleriEsitle(durum.takip, durum.bildirim).catch(() => {});
+  }, 800);
 }
-function cizAyarlar() {
-  const icerik = JSON.stringify({
-    aciklama: 'Bildirim gelmesini istedigin takimlar. Uygulamadaki Bildirim sekmesinden hazir listeyi kopyalayip buraya yapistirabilirsin.',
-    bildirim_takimlari: durum.takip.map((t) => ({ id: t.id, ad: t.ad })),
-  }, null, 2);
-  const mevcut = (durum.bildirimTakip?.bildirim_takimlari || []);
-  const mevcutIds = new Set(mevcut.map((t) => String(t.id)));
-  const ayni = mevcut.length === durum.takip.length && durum.takip.every((t) => mevcutIds.has(t.id));
-  const depo = depoAdresi();
-  return `
-    <h2 class="bolum-baslik">Şu an bildirim gelen takımlar</h2>
-    <div class="kart adimlar"><p>${mevcut.length ? mevcut.map((t) => `<b>${kacis(t.ad)}</b>`).join(', ') : 'Henüz yok.'}</p>
-      ${!ayni && durum.takip.length ? '<p class="uyari" style="margin:8px 0 0">Uygulamadaki listen ile bildirim listesi farklı. Aşağıdaki 2. adımla güncelleyebilirsin.</p>' : ''}
-    </div>
 
-    <h2 class="bolum-baslik">Bildirimleri kurma</h2>
-    <div class="kart adimlar"><ol>
-      <li><b>ntfy uygulamasını kur</b> (iPhone: App Store, Android: Play Store). Uygulamada <b>+</b> ile, GitHub'a <code>NTFY_KONU</code> olarak girdiğin konu adına abone ol.</li>
-      <li><b>Takım listesini güncelle:</b> aşağıdaki metni kopyala, GitHub'daki <code>takip.json</code> dosyasının içeriğiyle değiştir ve kaydet (Commit).
-        <div class="kod" id="takipMetni">${kacis(icerik)}</div>
-        <div class="satir-dugmeler">
-          <button class="dugme" id="kopyalaBtn">Kopyala</button>
-          ${depo ? `<a class="dugme ikincil" href="${kacis(depo)}/edit/main/takip.json" target="_blank" rel="noopener">GitHub'da düzenle</a>` : ''}
-        </div>
-      </li>
-      <li>Hepsi bu. Takımının maçı yaklaşınca GitHub görevi maçı izler; maç başlangıcı, gol, devre arası ve maç sonu bildirim olarak telefonuna gelir.</li>
-    </ol></div>
+/** Buluttaki liste ile cihazdaki liste birleştirilir, sonra iki yere de yazılır */
+async function esitle() {
+  const belge = await Bulut.belgeOku();
+  const ids = takipIdler();
+  const eklenen = belge.takimlar.filter((t) => t?.id && !ids.has(t.id));
+  const birlesik = [...durum.takip, ...eklenen].slice(0, AZAMI_TAKIM);
+  if (!belge.bos) durum.bildirim = belge.bildirim;
+  const degisti = belge.bos || birlesik.length !== belge.takimlar.length;
+  durum.takip = birlesik;
+  depoYaz(DEPO, durum.takip);
+  depoYaz(BILDIRIM_DEPO, durum.bildirim);
+  if (degisti) await Bulut.belgeYaz({ takimlar: durum.takip, bildirim: durum.bildirim });
+  Bulut.abonelikleriEsitle(durum.takip, durum.bildirim).catch(() => {});
+  if (eklenen.length) Promise.all(gerekliLigler().filter((k) => !durum.ligVeri[k]).map(ligYukle)).then(() => ciz());
+}
+
+async function bulutBaslat() {
+  try {
+    await Bulut.baslat();
+    await esitle();
+    durum.bulut = 'hazir';
+    if (durum.takip.length) Bulut.bildirimIzniIste().catch(() => {});
+  } catch (h) {
+    console.warn('bulut', h);
+    durum.bulut = 'hata';
+  }
+  ciz();
+}
+
+async function hesapIslemi(fn) {
+  if (durum.islem) return;
+  durum.islem = true;
+  ciz();
+  try { await fn(); } catch (h) { console.warn(h); tost('İşlem tamamlanamadı, tekrar dene'); }
+  durum.islem = false;
+  ciz();
+}
+
+function cihazdakiHesabiTemizle() {
+  durum.takip = [];
+  durum.bildirim = { ...VARSAYILAN_BILDIRIM };
+  depoYaz(DEPO, durum.takip);
+  depoYaz(BILDIRIM_DEPO, durum.bildirim);
+}
+
+const googleIleGiris = () => hesapIslemi(async () => {
+  const s = await Bulut.googleIleGiris();
+  if (s.durum === 'iptal') return;
+  durum.bulut = 'hazir';
+  await esitle();
+  tost(s.durum === 'gecildi' ? 'Hesabına geçildi, takımlar birleştirildi' : 'Google hesabına bağlandı');
+});
+
+// Çıkışta takımlar hesapta kalır, bu cihazdan silinir
+const cikisYap = () => hesapIslemi(async () => {
+  await Bulut.abonelikleriEsitle([], durum.bildirim).catch(() => {});
+  await Bulut.cikis();
+  cihazdakiHesabiTemizle();
+  tost('Çıkış yapıldı');
+});
+
+const hesabiSil = () => hesapIslemi(async () => {
+  durum.onay = null;
+  await Bulut.abonelikleriEsitle([], durum.bildirim).catch(() => {});
+  await Bulut.hesabiSil();
+  cihazdakiHesabiTemizle();
+  tost('Hesabın ve verilerin silindi');
+});
+
+function bildirimDegistir(tur) {
+  durum.bildirim = { ...durum.bildirim, [tur]: !durum.bildirim[tur] };
+  depoYaz(BILDIRIM_DEPO, durum.bildirim);
+  if (durum.bildirim[tur]) Bulut.bildirimIzniIste().catch(() => {});
+  if (durum.bulut === 'hazir') {
+    Bulut.bildirimAyarlariYaz(durum.bildirim).catch((h) => console.warn(h));
+    Bulut.abonelikleriEsitle(durum.takip, durum.bildirim).catch(() => {});
+  }
+  ciz();
+}
+
+// ---- Hesap
+const GOOGLE_LOGO = '<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
+
+function cizHesap() {
+  const k = Bulut.kullanici;
+  const bekle = durum.islem ? 'disabled' : '';
+  let hesap;
+  if (durum.bulut === 'baglaniyor') {
+    hesap = '<p>Hesaba bağlanılıyor…</p>';
+  } else if (durum.bulut === 'hata' || !k) {
+    hesap = `<p>Hesaba bağlanılamadı. Takımların bu cihazda kayıtlı; bağlantı gelince eşitlenir.</p>
+      <div class="satir-dugmeler"><button class="dugme ikincil" id="bulutTekrarBtn">Tekrar dene</button></div>`;
+  } else if (k.misafir) {
+    hesap = `<div class="profil"><div class="avatar">?</div><div><b>Misafir</b><small>Hesabın bu cihaza bağlı</small></div></div>
+      <p>Giriş yaparsan takımların tüm cihazlarında görünür.</p>
+      <div class="satir-dugmeler"><button class="dugme google" id="googleBtn" ${bekle}>${GOOGLE_LOGO}Google ile giriş yap</button></div>`;
+  } else {
+    const foto = k.foto ? `<img class="avatar" src="${kacis(k.foto)}" alt="" referrerpolicy="no-referrer">`
+      : `<div class="avatar">${kacis((k.ad || k.eposta || '?').slice(0, 1).toLocaleUpperCase('tr'))}</div>`;
+    hesap = `<div class="profil">${foto}<div><b>${kacis(k.ad || 'Google hesabı')}</b><small>${kacis(k.eposta)}</small></div></div>
+      <p>Takımların bu hesapta; giriş yaptığın her cihazda görünür.</p>
+      <div class="satir-dugmeler"><button class="dugme ikincil" id="cikisBtn" ${bekle}>Çıkış yap</button></div>`;
+  }
+
+  const bildirim = Bulut.yerel
+    ? `<div class="kart anahtarlar">${BILDIRIM_TURLERI.map((tur) => `
+        <button class="anahtar-satir" role="switch" aria-checked="${!!durum.bildirim[tur]}" data-bildirim="${tur}">
+          <span>${kacis(BILDIRIM_ADLARI[tur])}</span><span class="anahtar" aria-hidden="true"></span>
+        </button>`).join('')}
+        <p class="not">Bildirimler takip ettiğin takımların maçları için gelir.</p>
+      </div>`
+    : '<div class="kart adimlar"><p>Bildirimler Android uygulamasında. Web sürümünde hesabın ve takımların eşitlenir, bildirim gelmez.</p></div>';
+
+  const sil = k && durum.bulut === 'hazir'
+    ? `<div class="satir-dugmeler"><button class="dugme tehlike" id="silBtn" ${bekle}>Hesabımı sil</button></div>` : '';
+
+  return `
+    <h2 class="bolum-baslik">Hesap</h2>
+    <div class="kart adimlar hesap">${hesap}</div>
+
+    <h2 class="bolum-baslik">Bildirimler</h2>
+    ${bildirim}
 
     <h2 class="bolum-baslik">Uygulama hakkında</h2>
     <div class="kart adimlar">
-      <p>Veriler ESPN'den, GitHub'da çalışan Python görevi tarafından çekilir. Fikstür ve puan durumu birkaç saatte bir, maç sırasında skor dakikada bir güncellenir.</p>
+      <p>Fikstür ve puan durumu birkaç saatte bir, maç sırasında skor dakikada bir güncellenir.</p>
       <p>Son veri: ${kacis(goreceliZaman(durum.canli?.guncelleme || Object.values(durum.ligVeri)[0]?.guncelleme))}</p>
-      ${depo ? `<p><a href="${kacis(depo)}/actions" target="_blank" rel="noopener">GitHub görevlerini görüntüle</a></p>` : ''}
+      <p><a href="${GIZLILIK_ADRESI}" target="_blank" rel="noopener">Gizlilik politikası</a></p>
+      ${sil}
     </div>`;
 }
+
+function onayKutusu() {
+  if (durum.onay !== 'sil') return '';
+  return `<div class="onay-perde">
+    <div class="kart onay" role="alertdialog" aria-modal="true" aria-labelledby="onayBaslik">
+      <h2 id="onayBaslik">Hesabın silinsin mi?</h2>
+      <p>Takım listen ve bildirim ayarların buluttan ve bu cihazdan kalıcı olarak silinir. Bu işlem geri alınamaz.</p>
+      <div class="satir-dugmeler">
+        <button class="dugme ikincil" id="onayIptal">Vazgeç</button>
+        <button class="dugme tehlike" id="onayEvet">Evet, sil</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ---- Bildirime dokununca ilgili takım kartına git
+function hedefeGit() {
+  if (!durum.hedefMac || durum.sekme !== 'takimlar') return;
+  const m = tumMaclar().find((x) => x.id === durum.hedefMac);
+  if (!m) return;  // veri gelince ciz() yeniden dener
+  durum.hedefMac = null;
+  const t = durum.takip.find((x) => x.id === m.ev.id || x.id === m.dep.id);
+  const kart = t && document.getElementById(`takim-${t.id}`);
+  if (kart) requestAnimationFrame(() => kart.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+}
+Bulut.bildirimeDokununca((veri) => {
+  if (!veri.mac) return;
+  durum.hedefMac = String(veri.mac);
+  durum.sekme = 'takimlar';
+  yukle({ sessiz: true });
+});
 
 // ------------------------------------------------------------------ olaylar
 document.addEventListener('click', (e) => {
@@ -480,13 +630,17 @@ document.addEventListener('click', (e) => {
   else if (h.dataset.puanlig) { durum.puanLig = h.dataset.puanlig; ciz(); }
   else if (h.dataset.eklelig) { durum.ekleLig = h.dataset.eklelig; ciz(); }
   else if (h.dataset.takim) takimDegistir(h.dataset.takim, h.dataset.lig);
+  else if (h.dataset.bildirim) bildirimDegistir(h.dataset.bildirim);
   else if (h.id === 'yenileBtn') yukle();
-  else if (h.id === 'kopyalaBtn') {
-    const metin = $('#takipMetni').textContent;
-    (navigator.clipboard?.writeText(metin) || Promise.reject()).then(
-      () => tost('Kopyalandı'),
-      () => { const r = document.createRange(); r.selectNodeContents($('#takipMetni')); getSelection().removeAllRanges(); getSelection().addRange(r); tost('Metni seçip kopyala'); });
-  }
+  else if (h.id === 'googleBtn') googleIleGiris();
+  else if (h.id === 'cikisBtn') cikisYap();
+  else if (h.id === 'silBtn') { durum.onay = 'sil'; ciz(); $('#onayIptal')?.focus(); }
+  else if (h.id === 'onayIptal') { durum.onay = null; ciz(); }
+  else if (h.id === 'onayEvet') hesabiSil();
+  else if (h.id === 'bulutTekrarBtn') { durum.bulut = 'baglaniyor'; ciz(); bulutBaslat(); }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && durum.onay) { durum.onay = null; ciz(); }
 });
 document.addEventListener('input', (e) => {
   if (e.target.id !== 'arama') return;
@@ -511,9 +665,10 @@ document.addEventListener('visibilitychange', () => {
 });
 setInterval(() => { if (document.visibilityState === 'visible' && durum.sekme === 'takimlar') ciz(); }, 60e3);
 
-if ('serviceWorker' in navigator && location.protocol === 'https:') {
+if (!Bulut.yerel && 'serviceWorker' in navigator && location.protocol === 'https:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
 ciz();
 yukle();
+bulutBaslat();

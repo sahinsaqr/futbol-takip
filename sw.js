@@ -1,6 +1,6 @@
 // Uygulama dosyalarını önbelleğe alır; internet yokken son veriler gösterilir.
-const SURUM = 'futbol-takip-v2';
-const KABUK = ['./', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest',
+const SURUM = 'futbol-takip-v3';
+const KABUK = ['./', 'index.html', 'style.css', 'app.js', 'bulut.js', 'firebase-ayar.js', 'manifest.webmanifest',
   'ikonlar/ikon.svg', 'ikonlar/ikon-192.png', 'ikonlar/apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => {
