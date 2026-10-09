@@ -1,8 +1,20 @@
+# Python
 __pycache__/
 *.pyc
 *.tmp
+
+# Derleme çıktıları ve bağımlılıklar
 node_modules/
 www/
 cikti/
 *.apk
 *.aab
+local.properties
+
+# Gizli bilgiler: asla depoya girmez
+*adminsdk*.json
+*service-account*.json
+*.keystore
+*.jks
+keystore.properties
+.env*

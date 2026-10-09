@@ -14,6 +14,9 @@ on:
         options: [gol, mac, son, hat]
         default: gol
 
+permissions:
+  contents: read
+
 jobs:
   gonder:
     runs-on: ubuntu-latest

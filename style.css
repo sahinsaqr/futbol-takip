@@ -254,3 +254,14 @@ tr.takipte .isim { font-weight: 800; }
 .onay h2 { margin: 0 0 8px; font-size: 18px; }
 .onay p { margin: 0 0 8px; color: var(--yazi-2); }
 .onay .satir-dugmeler { justify-content: flex-end; margin-top: 14px; }
+.menu { padding: 0; margin-top: 12px; }
+.menu-satir {
+  display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px;
+  background: none; border: 0; padding: 14px 16px; text-align: left; font-size: 18px; color: var(--yazi-2);
+}
+.menu-satir b { display: block; font-size: 15px; color: var(--yazi); }
+.menu-satir small { color: var(--yazi-2); font-size: 13px; }
+.onay.politika { max-width: 520px; max-height: calc(100dvh - 32px); overflow-y: auto; }
+.politika h3 { font-size: 15px; margin: 16px 0 4px; }
+.politika p { font-size: 14px; }
+.politika-link a { color: var(--vurgu); word-break: break-all; }

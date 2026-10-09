@@ -9,7 +9,17 @@ const BILDIRIM_DEPO = 'ft_bildirim';
 const AZAMI_TAKIM = 50;   // Firestore kuralıyla aynı
 // Android'de dosyalar uygulamanın içinden gelir; veri GitHub Pages'ten okunur
 const VERI_KOK = Bulut.yerel ? 'https://sahinsaqr.github.io/futbol-takip/' : '';
-const GIZLILIK_ADRESI = 'https://sahinsaqr.github.io/futbol-takip/gizlilik.html';
+// MLK Craft'ın ortak gizlilik politikası (Google Play'e verilen adresle aynı)
+const PRIVACY_URL = 'https://mlkcraft.com/privacy';
+const FEEDBACK_EMAIL = 'info@mlkcraft.com';
+// Hesap sekmesindeki "Gizlilik Politikası" penceresinde gösterilen kısa özet
+const GIZLILIK_OZETI = [
+  ['Hangi verileri saklıyoruz?', 'Takip ettiğin takımlar ve bildirim ayarların cihazında ve Google Firebase sunucularında (Avrupa) saklanır. Uygulamayı kullanmak için hesap açman gerekmez; ilk açılışta anonim bir hesap oluşturulur. Google ile giriş yaparsan adın, e-posta adresin ve profil fotoğrafın yalnızca hesabını tanımak ve takımlarını cihazların arasında eşitlemek için kullanılır.'],
+  ['Bildirimler', 'Android uygulamasında bildirimlere izin verirsen cihazın bir bildirim belirteci alır ve takip ettiğin takımların bildirim konularına abone olur. Sunucumuz kimin hangi takımı takip ettiğini bilmez; bildirimler takım konularına gönderilir.'],
+  ['Maç verileri', 'Skorlar, fikstür ve puan durumu üçüncü taraf spor veri kaynaklarından alınır. Uygulamada reklam ya da analiz aracı yoktur.'],
+  ['Verilerini silme', 'Hesap > Hesabımı sil ile buluttaki ve bu cihazdaki takım listeni, bildirim ayarlarını ve hesabını istediğin an kalıcı olarak silebilirsin. Çıkış yapınca takımların bu cihazdan kaldırılır, hesabında kalır.'],
+  ['İletişim', `Gizlilikle ilgili soruların için: ${FEEDBACK_EMAIL}`],
+];
 const BILDIRIM_ADLARI = {
   gol: 'Goller',
   mac: 'Maç başladı / devre arası',
@@ -33,7 +43,7 @@ const durum = {
   bildirim: { ...VARSAYILAN_BILDIRIM, ...depoOku(BILDIRIM_DEPO, {}) },
   bulut: 'baglaniyor',  // baglaniyor | hazir | hata
   islem: false,         // giriş/çıkış/silme sürüyor
-  onay: null,           // sayfa içi onay kutusu: 'sil'
+  onay: null,           // sayfa içi pencere: 'sil' | 'gizlilik'
   hedefMac: null,       // bildirime dokunulunca gidilecek maç
 };
 let yenilemeZamanlayici = null;
@@ -581,12 +591,29 @@ function cizHesap() {
     <div class="kart adimlar">
       <p>Fikstür ve puan durumu birkaç saatte bir, maç sırasında skor dakikada bir güncellenir.</p>
       <p>Son veri: ${kacis(goreceliZaman(durum.canli?.guncelleme || Object.values(durum.ligVeri)[0]?.guncelleme))}</p>
-      <p><a href="${GIZLILIK_ADRESI}" target="_blank" rel="noopener">Gizlilik politikası</a></p>
       ${sil}
+    </div>
+    <div class="kart menu">
+      <button class="menu-satir" id="gizlilikBtn">
+        <span><b>🔒 Gizlilik Politikası</b><small>Hangi verileri nasıl kullandığımız</small></span><span aria-hidden="true">›</span>
+      </button>
     </div>`;
 }
 
+function gizlilikPenceresi() {
+  const adres = PRIVACY_URL.replace(/^https:\/\//, '');
+  return `<div class="onay-perde">
+    <div class="kart onay politika" role="dialog" aria-modal="true" aria-labelledby="gizlilikBaslik">
+      <h2 id="gizlilikBaslik">Gizlilik Politikası</h2>
+      ${GIZLILIK_OZETI.map(([baslik, metin]) => `<h3>${kacis(baslik)}</h3><p>${kacis(metin)}</p>`).join('')}
+      <p class="politika-link">Politikanın tam metni: <a href="${PRIVACY_URL}" target="_blank" rel="noopener noreferrer">${adres}</a></p>
+      <div class="satir-dugmeler"><button class="dugme ikincil" id="onayIptal">Kapat</button></div>
+    </div>
+  </div>`;
+}
+
 function onayKutusu() {
+  if (durum.onay === 'gizlilik') return gizlilikPenceresi();
   if (durum.onay !== 'sil') return '';
   return `<div class="onay-perde">
     <div class="kart onay" role="alertdialog" aria-modal="true" aria-labelledby="onayBaslik">
@@ -640,6 +667,7 @@ document.addEventListener('click', (e) => {
   else if (h.id === 'cikisBtn') cikisYap();
   else if (h.id === 'silBtn') { durum.onay = 'sil'; ciz(); $('#onayIptal')?.focus(); }
   else if (h.id === 'onayIptal') { durum.onay = null; ciz(); }
+  else if (h.id === 'gizlilikBtn') { durum.onay = 'gizlilik'; ciz(); $('#onayIptal')?.focus(); }
   else if (h.id === 'onayEvet') hesabiSil();
   else if (h.id === 'bulutTekrarBtn') { durum.bulut = 'baglaniyor'; ciz(); bulutBaslat(); }
 });
