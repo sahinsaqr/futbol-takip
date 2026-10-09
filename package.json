@@ -1,0 +1,26 @@
+{
+  "name": "futbol-takip",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Takip ettiğin takımların canlı skorları, fikstürü ve puan durumu",
+  "type": "module",
+  "scripts": {
+    "kopyala": "node kopyala.mjs",
+    "android": "node kopyala.mjs && npx cap sync android",
+    "apk": "node kopyala.mjs && npx cap sync android && cd android && gradlew.bat assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor-firebase/app": "^8.5.2",
+    "@capacitor-firebase/authentication": "^8.5.2",
+    "@capacitor-firebase/firestore": "^8.5.2",
+    "@capacitor-firebase/messaging": "^8.5.2",
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "firebase": "^12.19.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5"
+  }
+}
