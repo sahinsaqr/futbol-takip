@@ -31,6 +31,25 @@ function depoYaz(anahtar, deger) {
 const kacis = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const $ = (s, kok = document) => kok.querySelector(s);
 
+// ESPN'den İngilizce gelen puan tablosu açıklamaları ve tablo adları
+const TURKCE_METIN = {
+  'Champions League': 'Şampiyonlar Ligi',
+  'Champions League qualifying': 'Şampiyonlar Ligi ön eleme',
+  'Europa League': 'Avrupa Ligi',
+  'Europa League qualifying': 'Avrupa Ligi ön eleme',
+  'Conference League qualifying': 'Konferans Ligi ön eleme',
+  'Relegation': 'Küme düşme',
+  'Relegated': 'Küme düşme',
+  'Relegation playoff': 'Küme düşme play-off',
+  'Relegation playoffs': 'Küme düşme play-off',
+  'Qualifies for round of 16': "Son 16'ya çıkar",
+  'Knockout phase playoffs - seeded': 'Play-off (seri başı)',
+  'Knockout phase playoffs - unseeded': 'Play-off',
+  'Eliminated': 'Elendi',
+  'League Phase': 'Lig aşaması',
+};
+const turkceMetin = (s) => TURKCE_METIN[s] ?? s;
+
 async function jsonGetir(yol) {
   const r = await fetch(`${yol}?t=${Date.now()}`, { cache: 'no-store' });
   if (!r.ok) throw new Error(`${yol}: ${r.status}`);
@@ -334,14 +353,14 @@ function cizPuan() {
   const tablolar = veri.tablolar.map((tablo) => {
     const aciklama = new Map();
     const satirlar = tablo.satirlar.map((s) => {
-      if (s.renk && s.not) aciklama.set(s.not, s.renk);
+      if (s.renk && s.not) aciklama.set(turkceMetin(s.not), s.renk);
       return `<tr class="${ids.has(s.takim.id) ? 'takipte' : ''}">
         <td class="sira" style="--serit:${kacis(s.renk || 'transparent')}">${s.sira}</td>
         <td class="takim-hucre"><div class="ic">${logoHtml(s.takim)}<span class="isim">${kacis(s.takim.ad)}</span></div></td>
         <td>${s.o}</td><td class="gizle-dar">${s.g}</td><td class="gizle-dar">${s.b}</td><td class="gizle-dar">${s.m}</td>
         <td>${s.av > 0 ? '+' : ''}${s.av}</td><td class="puan-h">${s.p}</td></tr>`;
     }).join('');
-    const baslik = veri.tablolar.length > 1 && tablo.ad ? `<div class="tablo-baslik">${kacis(tablo.ad)}</div>` : '';
+    const baslik = veri.tablolar.length > 1 && tablo.ad ? `<div class="tablo-baslik">${kacis(turkceMetin(tablo.ad))}</div>` : '';
     const acik = aciklama.size ? `<div class="aciklamalar">${[...aciklama].map(([n, r]) => `<span><i style="background:${kacis(r)}"></i>${kacis(n)}</span>`).join('')}</div>` : '';
     return `<div class="kart">${baslik}<div class="tablo-sar"><table class="puan">
       <thead><tr><th>#</th><th class="takim-hucre">Takım</th><th>O</th><th class="gizle-dar">G</th><th class="gizle-dar">B</th><th class="gizle-dar">M</th><th>AV</th><th>P</th></tr></thead>

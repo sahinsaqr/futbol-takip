@@ -1,7 +1,6 @@
 {
   "ligler": [
     {"kod": "tur.1", "ad": "Süper Lig", "ulke": "Türkiye"},
-    {"kod": "tur.2", "ad": "1. Lig", "ulke": "Türkiye"},
     {"kod": "eng.1", "ad": "Premier Lig", "ulke": "İngiltere"},
     {"kod": "esp.1", "ad": "La Liga", "ulke": "İspanya"},
     {"kod": "ger.1", "ad": "Bundesliga", "ulke": "Almanya"},
