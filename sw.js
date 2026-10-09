@@ -1,5 +1,5 @@
 // Uygulama dosyalarını önbelleğe alır; internet yokken son veriler gösterilir.
-const SURUM = 'futbol-takip-v1';
+const SURUM = 'futbol-takip-v2';
 const KABUK = ['./', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest',
   'ikonlar/ikon.svg', 'ikonlar/ikon-192.png', 'ikonlar/apple-touch-icon.png'];
 
@@ -31,7 +31,7 @@ self.addEventListener('fetch', (e) => {
   if (url.origin !== location.origin) return;
 
   // Veri dosyaları ve sayfa: önce ağ, olmazsa önbellek
-  e.respondWith(fetch(e.request).then((r) => {
+  e.respondWith(fetch(e.request, { cache: 'no-cache' }).then((r) => {
     if (r.ok) {
       const kopya = r.clone();
       const anahtar = url.pathname.includes('/veri/') || url.pathname.endsWith('takip.json')
