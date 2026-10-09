@@ -1,0 +1,16 @@
+{
+  "ligler": [
+    {"kod": "tur.1", "ad": "Süper Lig", "ulke": "Türkiye"},
+    {"kod": "tur.2", "ad": "1. Lig", "ulke": "Türkiye"},
+    {"kod": "eng.1", "ad": "Premier Lig", "ulke": "İngiltere"},
+    {"kod": "esp.1", "ad": "La Liga", "ulke": "İspanya"},
+    {"kod": "ger.1", "ad": "Bundesliga", "ulke": "Almanya"},
+    {"kod": "ita.1", "ad": "Serie A", "ulke": "İtalya"},
+    {"kod": "fra.1", "ad": "Ligue 1", "ulke": "Fransa"},
+    {"kod": "ned.1", "ad": "Eredivisie", "ulke": "Hollanda"},
+    {"kod": "por.1", "ad": "Liga Portugal", "ulke": "Portekiz"},
+    {"kod": "uefa.champions", "ad": "Şampiyonlar Ligi", "ulke": "Avrupa"},
+    {"kod": "uefa.europa", "ad": "Avrupa Ligi", "ulke": "Avrupa"},
+    {"kod": "uefa.europa.conf", "ad": "Konferans Ligi", "ulke": "Avrupa"}
+  ]
+}

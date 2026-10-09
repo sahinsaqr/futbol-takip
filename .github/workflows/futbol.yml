@@ -1,0 +1,47 @@
+name: Futbol verisi ve maç izleme
+
+on:
+  schedule:
+    - cron: "7,37 * * * *"   # her 30 dakikada bir (GitHub birkaç dakika geciktirebilir)
+  workflow_dispatch:
+    inputs:
+      mod:
+        description: "Veri güncelleme biçimi"
+        type: choice
+        options: [otomatik, tam, hizli]
+        default: otomatik
+
+permissions:
+  contents: write
+
+# Aynı anda tek bir görev çalışsın; maç izlenirken yenileri sırada bekler.
+concurrency:
+  group: futbol-izleyici
+  cancel-in-progress: false
+
+jobs:
+  calis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Git kullanıcısını ayarla
+        run: |
+          git config user.name "futbol-takip-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Elle seçilen veri güncellemesi
+        if: github.event_name == 'workflow_dispatch' && inputs.mod != 'otomatik'
+        run: python arka_plan/veri_guncelle.py ${{ inputs.mod }}
+
+      - name: Verileri güncelle ve maçları izle
+        env:
+          NTFY_KONU: ${{ secrets.NTFY_KONU }}
+          UYGULAMA_ADRESI: ${{ vars.UYGULAMA_ADRESI }}
+          PYTHONUNBUFFERED: "1"
+        run: python arka_plan/mac_izle.py

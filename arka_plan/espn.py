@@ -1,0 +1,267 @@
+"""ESPN'in açık veri adreslerinden futbol verisi çeker ve sadeleştirir.
+
+Sadece Python'un kendi kütüphanelerini kullanır (ek kurulum gerekmez).
+"""
+import json
+import time
+import urllib.error
+import urllib.request
+from datetime import date, timedelta
+
+SITE = "https://site.api.espn.com/apis/site/v2/sports/soccer"
+STANDINGS = "https://site.api.espn.com/apis/v2/sports/soccer"
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (futbol-takip kisisel proje)",
+    "Accept": "application/json",
+}
+
+# ESPN takım adlarını Türkçe yazımlarına çevirir
+TURKCE_AD = {
+    "Besiktas": "Beşiktaş",
+    "Fenerbahce": "Fenerbahçe",
+    "Goztepe": "Göztepe",
+    "Istanbul Basaksehir": "Başakşehir",
+    "Basaksehir": "Başakşehir",
+    "Genclerbirligi": "Gençlerbirliği",
+    "Kasimpasa": "Kasımpaşa",
+    "Eyupspor": "Eyüpspor",
+    "Caykur Rizespor": "Çaykur Rizespor",
+    "Rizespor": "Çaykur Rizespor",
+    "Fatih Karagumruk": "Fatih Karagümrük",
+    "Karagumruk": "Fatih Karagümrük",
+    "Erzurum BB": "Erzurumspor FK",
+    "Amed SFK": "Amedspor",
+    "Ankaragucu": "Ankaragücü",
+    "MKE Ankaragucu": "Ankaragücü",
+    "Istanbulspor": "İstanbulspor",
+    "Igdir FK": "Iğdır FK",
+    "Umraniyespor": "Ümraniyespor",
+    "Bandirmaspor": "Bandırmaspor",
+    "Manisa FK": "Manisa FK",
+    "Sanliurfaspor": "Şanlıurfaspor",
+    "Corum FK": "Çorum FK",
+    "Sakaryaspor": "Sakaryaspor",
+    "Keciorengucu": "Keçiörengücü",
+    "Esenler Erokspor": "Esenler Erokspor",
+}
+
+
+def turkce(ad):
+    return TURKCE_AD.get(ad, ad)
+
+
+class VeriHatasi(Exception):
+    pass
+
+
+def getir(url, deneme=3):
+    """URL'den JSON çeker; geçici hatalarda birkaç kez yeniden dener."""
+    son_hata = None
+    for i in range(deneme):
+        try:
+            istek = urllib.request.Request(url, headers=HEADERS)
+            with urllib.request.urlopen(istek, timeout=25) as yanit:
+                return json.loads(yanit.read().decode("utf-8"))
+        except urllib.error.HTTPError as h:
+            son_hata = h
+            if h.code in (400, 404):
+                break  # tekrar denemenin anlamı yok
+        except Exception as h:  # zaman aşımı, bağlantı hatası vb.
+            son_hata = h
+        time.sleep(1.5 * (i + 1))
+    raise VeriHatasi(f"{url} -> {son_hata}")
+
+
+# ---------------------------------------------------------------- maçlar
+
+def _skor(c):
+    s = c.get("score")
+    if isinstance(s, dict):
+        s = s.get("displayValue", s.get("value"))
+    if s is None or s == "":
+        return None
+    try:
+        return int(float(s))
+    except (TypeError, ValueError):
+        return None
+
+
+def _logo(team):
+    if team.get("logo"):
+        return team["logo"]
+    logos = team.get("logos") or []
+    return logos[0].get("href") if logos else ""
+
+
+def _takim(c):
+    t = c.get("team", {})
+    return {
+        "id": str(t.get("id", "")),
+        "ad": turkce(t.get("displayName") or t.get("name") or ""),
+        "kisa": t.get("abbreviation", ""),
+        "logo": _logo(t),
+    }
+
+
+def _goller(comp):
+    """Golleri (dakika, oyuncu, takım) listeler. ESPN her zaman vermeyebilir."""
+    goller = []
+    for d in comp.get("details") or []:
+        if not d.get("scoringPlay"):
+            continue
+        oyuncular = d.get("athletesInvolved") or []
+        goller.append({
+            "dk": (d.get("clock") or {}).get("displayValue", ""),
+            "oyuncu": oyuncular[0].get("displayName", "") if oyuncular else "",
+            "takim": str((d.get("team") or {}).get("id", "")),
+            "kk": bool(d.get("ownGoal")),
+            "pen": bool(d.get("penaltyKick")),
+        })
+    return goller
+
+
+def mac_sadele(ev, lig_kodu):
+    """ESPN etkinliğini uygulamanın kullandığı sade biçime çevirir."""
+    comp = (ev.get("competitions") or [{}])[0]
+    durum = comp.get("status") or ev.get("status") or {}
+    tip = durum.get("type") or {}
+    ev_sahibi = deplasman = None
+    for c in comp.get("competitors") or []:
+        if c.get("homeAway") == "home":
+            ev_sahibi = c
+        else:
+            deplasman = c
+    if not ev_sahibi or not deplasman:
+        return None
+    asama = tip.get("state", "pre")  # pre / in / post
+    oynandi = asama != "pre"
+    return {
+        "id": str(ev.get("id")),
+        "lig": lig_kodu,
+        "tarih": ev.get("date") or comp.get("date"),
+        "durum": asama,
+        "durum_kodu": tip.get("name", ""),
+        "dakika": durum.get("displayClock", "") if asama == "in" else "",
+        "ev": _takim(ev_sahibi),
+        "dep": _takim(deplasman),
+        "ev_skor": _skor(ev_sahibi) if oynandi else None,
+        "dep_skor": _skor(deplasman) if oynandi else None,
+        "goller": _goller(comp) if oynandi else [],
+        "stat": (comp.get("venue") or {}).get("fullName", ""),
+    }
+
+
+def gun_maclari(lig_kodu, gun):
+    """Tek bir gündeki (UTC) maçları getirir. gun: date nesnesi."""
+    veri = getir(f"{SITE}/{lig_kodu}/scoreboard?dates={gun:%Y%m%d}")
+    return [m for m in (mac_sadele(e, lig_kodu) for e in veri.get("events", [])) if m]
+
+
+def aralik_maclari(lig_kodu, baslangic, bitis):
+    """Tarih aralığındaki maçları getirir.
+
+    ESPN geniş aralıklarda hata verebildiği için aralığı gerektiğinde
+    ikiye bölerek tekrar dener.
+    """
+    url = f"{SITE}/{lig_kodu}/scoreboard?dates={baslangic:%Y%m%d}-{bitis:%Y%m%d}&limit=400"
+    try:
+        veri = getir(url, deneme=2)
+        olaylar = veri.get("events", [])
+        # Sonuç sınıra dayandıysa eksik gelmiş olabilir; böl.
+        if len(olaylar) < 400 or baslangic >= bitis:
+            return [m for m in (mac_sadele(e, lig_kodu) for e in olaylar) if m]
+    except VeriHatasi:
+        if baslangic >= bitis:
+            raise
+    orta = baslangic + (bitis - baslangic) // 2
+    sol = aralik_maclari(lig_kodu, baslangic, orta)
+    sag = aralik_maclari(lig_kodu, orta + timedelta(days=1), bitis)
+    return sol + sag
+
+
+def sezon_maclari(lig_kodu, geri_gun, ileri_gun, parca_gun=21):
+    bugun = date.today()
+    bas = bugun - timedelta(days=geri_gun)
+    son = bugun + timedelta(days=ileri_gun)
+    maclar = {}
+    while bas <= son:
+        parca_son = min(bas + timedelta(days=parca_gun - 1), son)
+        for m in aralik_maclari(lig_kodu, bas, parca_son):
+            maclar[m["id"]] = m
+        bas = parca_son + timedelta(days=1)
+        time.sleep(0.3)
+    return maclar
+
+
+# --------------------------------------------------------- puan durumu
+
+def _istatistik(stats):
+    sonuc = {}
+    for s in stats or []:
+        ad = s.get("name") or s.get("type")
+        deger = s.get("value")
+        if deger is None:
+            deger = s.get("displayValue")
+        sonuc[ad] = deger
+    return sonuc
+
+
+def _sayi(x):
+    try:
+        return int(float(x))
+    except (TypeError, ValueError):
+        return 0
+
+
+def puan_durumu(lig_kodu):
+    """Lig tablosunu getirir. Gruplu turnuvalarda birden çok tablo olabilir."""
+    veri = getir(f"{STANDINGS}/{lig_kodu}/standings")
+    tablolar = []
+    gruplar = veri.get("children") or ([veri] if veri.get("standings") else [])
+    for g in gruplar:
+        satirlar = []
+        for e in (g.get("standings") or {}).get("entries") or []:
+            t = e.get("team") or {}
+            st = _istatistik(e.get("stats"))
+            not_ = e.get("note") or {}
+            satirlar.append({
+                "sira": _sayi(st.get("rank")) or len(satirlar) + 1,
+                "takim": {
+                    "id": str(t.get("id", "")),
+                    "ad": turkce(t.get("displayName") or t.get("name") or ""),
+                    "logo": _logo(t),
+                },
+                "o": _sayi(st.get("gamesPlayed")),
+                "g": _sayi(st.get("wins")),
+                "b": _sayi(st.get("ties")),
+                "m": _sayi(st.get("losses")),
+                "a": _sayi(st.get("pointsFor")),
+                "y": _sayi(st.get("pointsAgainst")),
+                "av": _sayi(st.get("pointDifferential")),
+                "p": _sayi(st.get("points")),
+                "renk": not_.get("color", ""),
+                "not": not_.get("description", ""),
+            })
+        satirlar.sort(key=lambda s: s["sira"])
+        if satirlar:
+            tablolar.append({"ad": g.get("name", ""), "satirlar": satirlar})
+    return tablolar
+
+
+# ------------------------------------------------------------- takımlar
+
+def lig_takimlari(lig_kodu):
+    veri = getir(f"{SITE}/{lig_kodu}/teams")
+    takimlar = []
+    for sp in veri.get("sports") or []:
+        for lg in sp.get("leagues") or []:
+            for x in lg.get("teams") or []:
+                t = x.get("team") or x
+                takimlar.append({
+                    "id": str(t.get("id", "")),
+                    "ad": turkce(t.get("displayName") or t.get("name") or ""),
+                    "kisa": t.get("abbreviation", ""),
+                    "logo": _logo(t),
+                })
+    return takimlar
