@@ -74,12 +74,12 @@ async function jsonGetir(yol) {
   return r.json();
 }
 
-function tost(mesaj) {
+function tost(mesaj, sure = 2200) {
   const k = $('#tost');
   k.textContent = mesaj;
   k.classList.add('goster');
   clearTimeout(tost.z);
-  tost.z = setTimeout(() => k.classList.remove('goster'), 2200);
+  tost.z = setTimeout(() => k.classList.remove('goster'), sure);
 }
 
 const saatBicim = new Intl.DateTimeFormat('tr-TR', { hour: '2-digit', minute: '2-digit' });
@@ -614,6 +614,10 @@ Bulut.bildirimeDokununca((veri) => {
   if (!veri.mac) return;
   durum.hedefMac = String(veri.mac);
   durum.sekme = 'takimlar';
+  yukle({ sessiz: true });
+});
+Bulut.bildirimGelince((b) => {
+  tost([b.title, b.body?.split('\n')[0]].filter(Boolean).join(' · '), 5000);
   yukle({ sessiz: true });
 });
 

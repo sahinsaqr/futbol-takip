@@ -151,6 +151,11 @@ class YerelBulut {
   bildirimeDokununca(fn) {
     this.mesaj?.addListener('notificationActionPerformed', (e) => fn(e?.notification?.data || {}));
   }
+
+  // Uygulama ön plandayken Android bildirimi çekmeceye koymaz; uygulama kendisi gösterir
+  bildirimGelince(fn) {
+    this.mesaj?.addListener('notificationReceived', (e) => fn(e?.notification || {}));
+  }
 }
 
 // ------------------------------------------------------------------ Web
@@ -237,6 +242,7 @@ class WebBulut {
   async abonelikleriEsitle() { /* web'de bildirim yok */ }
   async bildirimIzniIste() { return false; }
   bildirimeDokununca() { /* web'de bildirim yok */ }
+  bildirimGelince() { /* web'de bildirim yok */ }
 }
 
 // ------------------------------------------------------------------ dış arayüz
@@ -280,4 +286,6 @@ export const Bulut = {
   bildirimIzniIste: () => ic.bildirimIzniIste(),
   /** Bildirime dokunulunca fn(data) çağrılır (data.mac = maç kimliği) */
   bildirimeDokununca: (fn) => ic.bildirimeDokununca(fn),
+  /** Uygulama açıkken bildirim gelince fn({ title, body, data }) çağrılır */
+  bildirimGelince: (fn) => ic.bildirimGelince(fn),
 };
