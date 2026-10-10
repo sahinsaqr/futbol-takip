@@ -8,7 +8,7 @@ const SEKME_DEPO = 'ft_sekme';
 const BILDIRIM_DEPO = 'ft_bildirim';
 const AZAMI_TAKIM = 50;   // Firestore kuralıyla aynı
 // Android'de dosyalar uygulamanın içinden gelir; veri GitHub Pages'ten okunur
-const VERI_KOK = Bulut.yerel ? 'https://sahinsaqr.github.io/futbol-takip/' : '';
+const VERI_KOK = Bulut.yerel ? 'https://futbol.mlkcraft.com/' : '';
 // MLK Craft'ın ortak gizlilik politikası (Google Play'e verilen adresle aynı)
 const PRIVACY_URL = 'https://mlkcraft.com/privacy';
 const FEEDBACK_EMAIL = 'info@mlkcraft.com';

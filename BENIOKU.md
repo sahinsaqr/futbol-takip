@@ -23,10 +23,10 @@ ESPN ──► GitHub Actions (Python) ──► veri/*.json ──► Web uygul
 2. **Bildirim konusu:** Depoda *Settings → Secrets and variables → Actions → New repository secret*
    - Name: `NTFY_KONU`
    - Secret: tahmin edilmesi zor bir ad, ör. `futbol-sahiner-x7k2q9`
-3. **(İsteğe bağlı)** Aynı sayfada *Variables* sekmesi → `UYGULAMA_ADRESI` = `https://sahinsaqr.github.io/futbol-takip/` (bildirime dokununca uygulama açılır).
+3. **(İsteğe bağlı)** Aynı sayfada *Variables* sekmesi → `UYGULAMA_ADRESI` = `https://futbol.mlkcraft.com/` (bildirime dokununca uygulama açılır).
 4. **İlk veri:** *Actions* sekmesi → gerekiyorsa iş akışlarını etkinleştir → **Futbol verisi ve maç izleme** → **Run workflow** → mod: `tam`. 5-10 dakika sürer.
 5. **Yayın:** *Settings → Pages → Build and deployment*: Source **Deploy from a branch**, Branch **main**, klasör **/ (root)** → Save.
-   Birkaç dakika sonra uygulama `https://sahinsaqr.github.io/futbol-takip/` adresinde açılır.
+   Birkaç dakika sonra uygulama `https://futbol.mlkcraft.com/` adresinde açılır.
 6. **iPhone:** Adresi Safari'de aç → Paylaş → **Ana Ekrana Ekle**.
 7. **Bildirim:** Telefona **ntfy** uygulamasını kur → **+** → 2. adımdaki konu adına abone ol.
 

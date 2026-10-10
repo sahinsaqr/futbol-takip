@@ -47,7 +47,7 @@ Değişmeyecek kurallar:
    - Authentication → Get started → Sign-in method: **Anonymous** ve **Google**'ı etkinleştir
      (Google için destek e-postası seçilecek).
    - Firestore Database → Create database → konum `eur3 (europe-west)` → production mode.
-   - Authentication → Settings → Authorized domains: `sahinsaqr.github.io` ekle.
+   - Authentication → Settings → Authorized domains: `sahinsaqr.github.io` ve `futbol.mlkcraft.com` ekle.
 4. `firestore.rules`:
    ```
    rules_version = '2';
@@ -104,7 +104,7 @@ Bulut.bildirimIzniIste()          // Android 13+ izin penceresi
   - Bildirim ayarları: 4 anahtar (Goller, Maç başladı/devre arası, Maç sonucu, Maçtan 15 dk önce hatırlat). Web'de bunların yerine "Bildirimler Android uygulamasında" notu.
   - "Hesabımı sil" (onay penceresiyle; tarayıcı `confirm()` yerine sayfa içi onay kutusu kullan).
   - Gizlilik politikası bağlantısı.
-- Veri adresi: native'de `https://sahinsaqr.github.io/futbol-takip/`, web'de göreli yol. (GitHub Pages CORS'a izin veriyor.)
+- Veri adresi: native'de `https://futbol.mlkcraft.com/`, web'de göreli yol. (GitHub Pages CORS'a izin veriyor.)
 - `sw.js` sadece web'de kaydedilsin; native'de kaydedilmesin.
 - Eski ntfy / `takip.json` arayüz metinleri kaldırılsın.
 
@@ -151,7 +151,7 @@ Bulut.bildirimIzniIste()          // Android 13+ izin penceresi
 
 - `gizlilik.html` (Türkçe + İngilizce): toplanan veriler (anonim kimlik, isteğe bağlı Google hesabı adı/e-postası,
   takip edilen takımlar, bildirim belirteci), amaç, saklama, hesap silme yolu, iletişim: info@mlkcraft.com.
-- Google Cloud konsolunda Firebase API anahtarlarını kısıtla (Android paket adı + SHA-1, web için `sahinsaqr.github.io`).
+- Google Cloud konsolunda Firebase API anahtarlarını kısıtla (Android paket adı + SHA-1, web için `sahinsaqr.github.io` ve `futbol.mlkcraft.com`).
 
 ## Doğrulama listesi (her aşamadan sonra ilgili olanlar)
 
