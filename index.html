@@ -7,6 +7,16 @@
   <meta name="robots" content="noindex, nofollow">
   <meta name="description"content="Takip ettiğin takımların canlı skorları, fikstürü ve puan durumu">
   <meta name="theme-color" content="#0e1512">
+  <!-- Kaydedilmiş temayı ilk çizimden önce uygula (yanıp sönmeyi önler); app.js'deki temaUygula ile aynı -->
+  <script>
+    (function () {
+      var secim = 'sistem';
+      try { secim = JSON.parse(localStorage.getItem('ft_tema')) || 'sistem'; } catch (e) {}
+      var acik = secim === 'acik' || (secim === 'sistem' && matchMedia('(prefers-color-scheme: light)').matches);
+      document.documentElement.dataset.tema = acik ? 'acik' : 'koyu';
+      document.querySelector('meta[name="theme-color"]').content = acik ? '#f2f5f3' : '#0e1512';
+    })();
+  </script>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">

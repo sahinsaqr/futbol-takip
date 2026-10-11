@@ -5,31 +5,39 @@
   --cizgi: #2a3832;
   --yazi: #eef3f0;
   --yazi-2: #9fb1a8;
-  --vurgu: #c8f135;
-  --vurgu-yazi: #0e1512;
-  --canli: #ff4d4f;
+  --vurgu: #c8f135;            /* vurgulu yazı, seçili sekme, çerçeve */
+  --vurgu-zemin: #c8f135;      /* düğme, çip, anahtar dolgusu */
+  --vurgu-zemin-yazi: #0e1512;
+  --canli: #ff7a7c;
   --galibiyet: #2fbf71;
   --beraberlik: #8a9a92;
   --maglubiyet: #e5534b;
+  --form-yazi: #0e1512;        /* G/B/M harfleri; beyaz bu zeminlerde okunmuyor */
   --golge: 0 1px 0 rgba(255,255,255,.03), 0 8px 24px rgba(0,0,0,.25);
+  /* koyu logolar (Juventus, Tottenham) koyu zeminde, beyaz logolar açık zeminde kaybolmasın */
+  --logo-kenar: drop-shadow(0 0 1px rgba(255,255,255,.7)) drop-shadow(0 0 .5px rgba(255,255,255,.7));
   --yaricap: 14px;
   --ust-bosluk: env(safe-area-inset-top, 0px);
   --alt-bosluk: env(safe-area-inset-bottom, 0px);
   color-scheme: dark;
 }
-@media (prefers-color-scheme: light) {
-  :root {
-    --zemin: #f2f5f3;
-    --yuzey: #ffffff;
-    --yuzey-2: #eef2ef;
-    --cizgi: #dfe6e1;
-    --yazi: #111916;
-    --yazi-2: #5d6d65;
-    --vurgu: #1f8f4e;
-    --vurgu-yazi: #ffffff;
-    --golge: 0 1px 2px rgba(0,0,0,.06), 0 6px 18px rgba(0,0,0,.06);
-    color-scheme: light;
-  }
+/* data-tema, index.html'deki betik ve app.js temaUygula() ile ayarlanır (Sistem / Açık / Koyu) */
+:root[data-tema="acik"] {
+  --zemin: #f2f5f3;
+  --yuzey: #ffffff;
+  --yuzey-2: #eef2ef;
+  --cizgi: #dfe6e1;
+  --yazi: #111916;
+  --yazi-2: #5d6d65;
+  --vurgu: #3f6b00;            /* lime açık zeminde okunmaz; aynı tonun koyusu */
+  --canli: #ad2121;
+  --galibiyet: #1e7d45;
+  --beraberlik: #66756d;
+  --maglubiyet: #c62f28;
+  --form-yazi: #ffffff;
+  --golge: 0 1px 2px rgba(0,0,0,.06), 0 6px 18px rgba(0,0,0,.06);
+  --logo-kenar: drop-shadow(0 0 1px rgba(0,0,0,.35));
+  color-scheme: light;
 }
 
 * { box-sizing: border-box; }
@@ -102,12 +110,13 @@ img { display: block; }
 .takim-ust .ad { font-weight: 800; font-size: 17px; line-height: 1.2; }
 .takim-ust .lig { font-size: 12px; color: var(--yazi-2); }
 .logo { width: 40px; height: 40px; object-fit: contain; flex: none; }
+img.logo { filter: var(--logo-kenar); }
 .logo.kucuk { width: 24px; height: 24px; }
 .logo.orta { width: 32px; height: 32px; }
 .logo-yedek { display: grid; place-items: center; border-radius: 50%; background: var(--yuzey-2); color: var(--yazi-2); font-weight: 800; font-size: 11px; }
 
 .form { display: flex; gap: 4px; margin-left: auto; }
-.form span { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; font-size: 11px; font-weight: 800; color: #fff; }
+.form span { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; font-size: 11px; font-weight: 800; color: var(--form-yazi); }
 .form .G { background: var(--galibiyet); }
 .form .B { background: var(--beraberlik); }
 .form .M { background: var(--maglubiyet); }
@@ -150,7 +159,7 @@ img { display: block; }
   flex: none; border: 1px solid var(--cizgi); background: var(--yuzey); color: var(--yazi);
   border-radius: 999px; padding: 7px 14px; font-size: 13px; font-weight: 600; white-space: nowrap;
 }
-.cip.aktif { background: var(--vurgu); color: var(--vurgu-yazi); border-color: var(--vurgu); }
+.cip.aktif { background: var(--vurgu-zemin); color: var(--vurgu-zemin-yazi); border-color: var(--vurgu-zemin); }
 .bolmeli { display: inline-grid; grid-auto-flow: column; background: var(--yuzey-2); border-radius: 10px; padding: 3px; margin-bottom: 12px; }
 .bolmeli button { border: 0; background: none; padding: 7px 16px; border-radius: 8px; font-weight: 600; font-size: 13px; color: var(--yazi-2); }
 .bolmeli button.aktif { background: var(--yuzey); color: var(--yazi); box-shadow: var(--golge); }
@@ -187,14 +196,14 @@ tr.takipte .isim { font-weight: 800; }
 .takim-sec .isim { flex: 1; font-size: 14px; font-weight: 600; line-height: 1.2; }
 .takim-sec .isaret { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--cizgi); display: grid; place-items: center; flex: none; }
 .takim-sec.secili { border-color: var(--vurgu); background: color-mix(in srgb, var(--vurgu) 10%, var(--yuzey)); }
-.takim-sec.secili .isaret { background: var(--vurgu); border-color: var(--vurgu); color: var(--vurgu-yazi); }
+.takim-sec.secili .isaret { background: var(--vurgu-zemin); border-color: var(--vurgu); color: var(--vurgu-zemin-yazi); }
 
 /* ----------------------------------------------------------- bilgi */
 .bos { text-align: center; padding: 36px 20px; color: var(--yazi-2); }
 .bos h2 { color: var(--yazi); font-size: 18px; margin: 10px 0 6px; }
 .dugme {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  background: var(--vurgu); color: var(--vurgu-yazi); border: 0; border-radius: 12px;
+  background: var(--vurgu-zemin); color: var(--vurgu-zemin-yazi); border: 0; border-radius: 12px;
   padding: 11px 18px; font-weight: 700; text-decoration: none; font-size: 14px;
 }
 .dugme.ikincil { background: var(--yuzey-2); color: var(--yazi); border: 1px solid var(--cizgi); }
@@ -242,7 +251,7 @@ tr.takipte .isim { font-weight: 800; }
   content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%;
   background: #fff; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.3);
 }
-.anahtar-satir[aria-checked="true"] .anahtar { background: var(--vurgu); }
+.anahtar-satir[aria-checked="true"] .anahtar { background: var(--vurgu-zemin); }
 .anahtar-satir[aria-checked="true"] .anahtar::after { transform: translateX(18px); }
 .anahtar-satir:focus-visible { outline: 2px solid var(--vurgu); outline-offset: -2px; }
 .anahtarlar .not { color: var(--yazi-2); font-size: 13px; margin: 10px 16px 4px; }
@@ -265,3 +274,13 @@ tr.takipte .isim { font-weight: 800; }
 .politika h3 { font-size: 15px; margin: 16px 0 4px; }
 .politika p { font-size: 14px; }
 .politika-link a { color: var(--vurgu); word-break: break-all; }
+/* Görünüm Modu (Sistem / Açık / Koyu) seçici — Sudoku'daki tema seçiciyle aynı biçim */
+.tema-satir { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 12px; padding: 14px 16px; }
+.tema-satir b { display: block; font-size: 15px; }
+.tema-satir small { color: var(--yazi-2); font-size: 13px; }
+.tema-secici { display: flex; gap: 4px; background: var(--yuzey-2); border: 1px solid var(--cizgi); border-radius: 999px; padding: 3px; }
+.tema-secici button {
+  background: none; border: 0; color: var(--yazi-2); padding: 6px 12px; border-radius: 999px;
+  font-size: 12px; font-weight: 700; white-space: nowrap; transition: background .2s, color .2s;
+}
+.tema-secici button.aktif { background: var(--vurgu-zemin); color: var(--vurgu-zemin-yazi); }
