@@ -1,4 +1,4 @@
-name: Futbol verisi ve maç izleme
+name: Taraftar verisi ve maç izleme
 
 on:
   schedule:
@@ -35,7 +35,7 @@ jobs:
 
       - name: Git kullanıcısını ayarla
         run: |
-          git config user.name "futbol-takip-bot"
+          git config user.name "taraftar-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Elle seçilen veri güncellemesi

@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Futbol Takip</string>
-    <string name="title_activity_main">Futbol Takip</string>
-    <string name="package_name">com.sahin.futboltakip</string>
-    <string name="custom_url_scheme">com.sahin.futboltakip</string>
+    <string name="app_name">Taraftar</string>
+    <string name="title_activity_main">Taraftar</string>
+    <string name="package_name">com.sahin.taraftar</string>
+    <string name="custom_url_scheme">com.sahin.taraftar</string>
 </resources>

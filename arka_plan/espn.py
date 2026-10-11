@@ -12,7 +12,7 @@ SITE = "https://site.api.espn.com/apis/site/v2/sports/soccer"
 STANDINGS = "https://site.api.espn.com/apis/v2/sports/soccer"
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (futbol-takip kisisel proje)",
+    "User-Agent": "Mozilla/5.0 (taraftar kisisel proje)",
     "Accept": "application/json",
 }
 

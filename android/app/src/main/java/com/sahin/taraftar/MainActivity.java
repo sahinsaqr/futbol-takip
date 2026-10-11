@@ -1,4 +1,4 @@
-package com.sahin.futboltakip;
+package com.sahin.taraftar;
 
 import com.getcapacitor.BridgeActivity;
 

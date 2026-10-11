@@ -1,4 +1,4 @@
-/* Futbol Takip — takip edilen takımların maçları, canlı skor ve puan durumu.
+/* Taraftar — takip edilen takımların maçları, canlı skor ve puan durumu.
    Veriler GitHub'daki Python görevinin ürettiği veri/*.json dosyalarından okunur.
    Hesap, takım eşitleme ve bildirim abonelikleri bulut.js üzerinden. */
 import { Bulut, BILDIRIM_TURLERI, VARSAYILAN_BILDIRIM } from './bulut.js';
@@ -8,9 +8,9 @@ const SEKME_DEPO = 'ft_sekme';
 const BILDIRIM_DEPO = 'ft_bildirim';
 const AZAMI_TAKIM = 50;   // Firestore kuralıyla aynı
 // Android'de dosyalar uygulamanın içinden gelir; veri GitHub Pages'ten okunur
-const VERI_KOK = Bulut.yerel ? 'https://futbol.mlkcraft.com/' : '';
+const VERI_KOK = Bulut.yerel ? 'https://taraftar.mlkcraft.com/' : '';
 // MLK Craft'ın ortak gizlilik politikası (Google Play'e verilen adresle aynı)
-const PRIVACY_URL = 'https://mlkcraft.com/privacy';
+const PRIVACY_URL = 'https://mlkcraft.com/privacy#taraftar';
 const FEEDBACK_EMAIL = 'info@mlkcraft.com';
 // Hesap sekmesindeki "Gizlilik Politikası" penceresinde gösterilen kısa özet
 const GIZLILIK_OZETI = [

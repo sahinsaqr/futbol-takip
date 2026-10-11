@@ -1,4 +1,4 @@
-# Futbol Takip — Firebase, kullanıcı girişi ve Android uygulaması
+# Taraftar — Firebase, kullanıcı girişi ve Android uygulaması
 
 Bu plan Claude Code tarafından bu klasörde adım adım uygulanacak. Her aşamanın sonunda
 çalıştığını doğrula, commit et ve kullanıcıya kısa bir özet ver. Kullanıcının tarayıcıda
@@ -28,7 +28,7 @@ Değişmeyecek kurallar:
 
 | Konu | Karar |
 |---|---|
-| Uygulama kimliği | `com.sahin.futboltakip`, ad: `Futbol Takip` |
+| Uygulama kimliği | `com.sahin.taraftar`, ad: `Taraftar` |
 | Firebase projesi | Sudoku'dan **ayrı** yeni proje (ör. `futbol-takip-sahin`) |
 | Giriş | İlk açılışta otomatik **misafir (anonymous)** hesabı. İsteyen **Google ile giriş** yapar; misafir hesap Google hesabına bağlanır (link), takımlar kaybolmaz. E-posta/şifre şimdilik yok. |
 | Takım listesi | Girişliyken Firestore `kullanicilar/{uid}` belgesinde; cihazda da localStorage'da önbellek |
@@ -40,14 +40,14 @@ Değişmeyecek kurallar:
 ## Aşama 1 — Firebase projesi
 
 1. `firebase` CLI ile giriş yapılmış mı kontrol et (Sudoku'da kullanılıyor). Yeni proje oluştur:
-   `firebase projects:create futbol-takip-sahin --display-name "Futbol Takip"` (ad doluysa sonuna rakam ekle).
-2. Projeye Android uygulaması (`com.sahin.futboltakip`) ve Web uygulaması ekle
+   `firebase projects:create futbol-takip-sahin --display-name "Taraftar"` (ad doluysa sonuna rakam ekle).
+2. Projeye Android uygulaması (`com.sahin.taraftar`) ve Web uygulaması ekle
    (`firebase apps:create`). Android için `google-services.json`, web için config nesnesini al.
 3. **Kullanıcıya bırakılacak konsol adımları** (CLI ile yapılamayanlar) — dur ve anlat:
    - Authentication → Get started → Sign-in method: **Anonymous** ve **Google**'ı etkinleştir
      (Google için destek e-postası seçilecek).
    - Firestore Database → Create database → konum `eur3 (europe-west)` → production mode.
-   - Authentication → Settings → Authorized domains: `sahinsaqr.github.io` ve `futbol.mlkcraft.com` ekle.
+   - Authentication → Settings → Authorized domains: `sahinsaqr.github.io` ve `taraftar.mlkcraft.com` ekle.
 4. `firestore.rules`:
    ```
    rules_version = '2';
@@ -104,7 +104,7 @@ Bulut.bildirimIzniIste()          // Android 13+ izin penceresi
   - Bildirim ayarları: 4 anahtar (Goller, Maç başladı/devre arası, Maç sonucu, Maçtan 15 dk önce hatırlat). Web'de bunların yerine "Bildirimler Android uygulamasında" notu.
   - "Hesabımı sil" (onay penceresiyle; tarayıcı `confirm()` yerine sayfa içi onay kutusu kullan).
   - Gizlilik politikası bağlantısı.
-- Veri adresi: native'de `https://futbol.mlkcraft.com/`, web'de göreli yol. (GitHub Pages CORS'a izin veriyor.)
+- Veri adresi: native'de `https://taraftar.mlkcraft.com/`, web'de göreli yol. (GitHub Pages CORS'a izin veriyor.)
 - `sw.js` sadece web'de kaydedilsin; native'de kaydedilmesin.
 - Eski ntfy / `takip.json` arayüz metinleri kaldırılsın.
 
@@ -132,7 +132,7 @@ Bulut.bildirimIzniIste()          // Android 13+ izin penceresi
 1. `package.json` oluştur (Sudoku'daki sürümlerle): `@capacitor/core`, `@capacitor/cli`, `@capacitor/android`,
    `@capacitor/app`, `@capacitor-firebase/app`, `@capacitor-firebase/authentication`, `@capacitor-firebase/firestore`,
    `@capacitor-firebase/messaging`, geliştirme için `@capacitor/assets`.
-2. `capacitor.config.json`: `appId: com.sahin.futboltakip`, `appName: Futbol Takip`, `webDir: www`,
+2. `capacitor.config.json`: `appId: com.sahin.taraftar`, `appName: Taraftar`, `webDir: www`,
    FirebaseAuthentication eklentisinde `providers: ["google.com"]`.
 3. `npm run kopyala` betiği: web dosyalarını (`index.html, app.js, bulut.js, style.css, manifest.webmanifest, ikonlar/`) `www/` içine kopyalar.
    `www/`, `node_modules/`, `android/app/google-services.json` dışındaki derleme çıktıları `.gitignore`'a.
@@ -143,7 +143,7 @@ Bulut.bildirimIzniIste()          // Android 13+ izin penceresi
    --iconBackgroundColor '#122a1f' --splashBackgroundColor '#0b1a13'`. Web ikonları (`ikonlar/`) zaten güncel.
 7. Google girişi için debug SHA-1 parmak izini (`cd android && gradlew signingReport`) Firebase Android uygulamasına ekle
    (`firebase apps:android:sha:create`). Release/Play imzası yayın aşamasında eklenecek.
-8. `cd android && gradlew assembleDebug` ile APK üret. APK'yı `C:\Users\sahin\Documents\Futbol_Takip\cikti\FutbolTakip-debug.apk`
+8. `cd android && gradlew assembleDebug` ile APK üret. APK'yı `C:\Users\sahin\Documents\Taraftar\cikti\Taraftar-debug.apk`
    olarak kopyala (bu klasör .gitignore'da). Kullanıcıya telefona nasıl kuracağını anlat
    (USB ile `adb install` veya dosyayı telefona atıp açma; "bilinmeyen kaynaklar" izni).
 
@@ -151,7 +151,7 @@ Bulut.bildirimIzniIste()          // Android 13+ izin penceresi
 
 - `gizlilik.html` (Türkçe + İngilizce): toplanan veriler (anonim kimlik, isteğe bağlı Google hesabı adı/e-postası,
   takip edilen takımlar, bildirim belirteci), amaç, saklama, hesap silme yolu, iletişim: info@mlkcraft.com.
-- Google Cloud konsolunda Firebase API anahtarlarını kısıtla (Android paket adı + SHA-1, web için `sahinsaqr.github.io` ve `futbol.mlkcraft.com`).
+- Google Cloud konsolunda Firebase API anahtarlarını kısıtla (Android paket adı + SHA-1, web için `sahinsaqr.github.io` ve `taraftar.mlkcraft.com`).
 
 ## Doğrulama listesi (her aşamadan sonra ilgili olanlar)
 

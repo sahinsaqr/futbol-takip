@@ -1,6 +1,6 @@
 {
-  "name": "Futbol Takip",
-  "short_name": "Futbol",
+  "name": "Taraftar",
+  "short_name": "Taraftar",
   "description": "Takip ettiğin takımların canlı skorları, fikstürü ve puan durumu",
   "lang": "tr",
   "start_url": "./",

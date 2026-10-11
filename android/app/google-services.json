@@ -29,6 +29,49 @@
       "api_key": [
         {
           "current_key": "AIzaSyAhDe9CAVSdZBa5m20YsefE8JPAzCnvBgQ"
+        },
+        {
+          "current_key": "AIzaSyDC0xhDoiC24LlPiKNEXDowrIod9_A7dqM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "422524978544-5djh3kbcsgsssdbsnl87nl589g06tkpt.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:422524978544:android:8d21a667b115e4e31e7bb5",
+        "android_client_info": {
+          "package_name": "com.sahin.taraftar"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "422524978544-h4jn7olmheppm4m8683g67dfkok2klk8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.sahin.taraftar",
+            "certificate_hash": "4f430fb9e81c6ea3fb712ff040e486840eb395b0"
+          }
+        },
+        {
+          "client_id": "422524978544-5djh3kbcsgsssdbsnl87nl589g06tkpt.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAhDe9CAVSdZBa5m20YsefE8JPAzCnvBgQ"
+        },
+        {
+          "current_key": "AIzaSyDC0xhDoiC24LlPiKNEXDowrIod9_A7dqM"
         }
       ],
       "services": {

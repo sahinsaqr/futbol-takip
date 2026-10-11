@@ -1,6 +1,6 @@
-# Futbol Takip — mlkcraft.com/privacy için ek bölüm
+# Taraftar — mlkcraft.com/privacy için ek bölüm
 
-Bu metin MLK Craft'ın ortak gizlilik politikasına (https://mlkcraft.com/privacy) Futbol Takip'e
+Bu metin MLK Craft'ın ortak gizlilik politikasına (https://mlkcraft.com/privacy) Taraftar'a
 özel bölüm olarak eklenecek. Uygulama tam metin için o adresi açar; Hesap sekmesindeki kısa
 özet `app.js` içindeki `GIZLILIK_OZETI` ile aynı içeriktedir. Metin değişirse ikisini birlikte güncelle.
 
@@ -8,10 +8,10 @@ Bu metin MLK Craft'ın ortak gizlilik politikasına (https://mlkcraft.com/privac
 
 ## Türkçe
 
-### Futbol Takip
+### Taraftar
 
-Futbol Takip, takip ettiğin futbol takımlarının maçlarını, skorlarını ve puan durumunu gösteren
-ücretsiz bir uygulamadır (Android uygulaması `com.sahin.futboltakip` ve web sürümü).
+Taraftar, takip ettiğin futbol takımlarının maçlarını, skorlarını ve puan durumunu gösteren
+ücretsiz bir uygulamadır (Android uygulaması `com.sahin.taraftar` ve web sürümü).
 
 **Spor verileri.** Maç, skor, fikstür ve puan durumu bilgileri üçüncü taraf spor veri
 kaynaklarından alınır ve GitHub Pages üzerinden sunulur. Bu verileri alırken senin hakkında bir
@@ -30,7 +30,7 @@ Messaging'den bir bildirim belirteci alır ve takip ettiğin takımların bildir
 bildirimler takım konularına gönderilir. Bir bildirim türünü kapattığında ya da takımı
 çıkardığında ilgili konudan çıkılır.
 
-**Reklam ve analiz.** Futbol Takip'te reklam, analiz (istatistik) ya da çökme raporlama aracı yoktur.
+**Reklam ve analiz.** Taraftar'da reklam, analiz (istatistik) ya da çökme raporlama aracı yoktur.
 
 **Hesabını ve verilerini silme.** Uygulamada **Hesap → Hesabımı sil** ile buluttaki ve cihazındaki
 takım listeni, bildirim ayarlarını ve hesabını istediğin an kalıcı olarak silebilirsin; cihazın
@@ -42,10 +42,10 @@ info@mlkcraft.com adresine yazabilirsin.
 
 ## English
 
-### Futbol Takip
+### Taraftar
 
-Futbol Takip is a free app that shows matches, scores and standings for the football teams you
-follow (Android app `com.sahin.futboltakip` and a web version).
+Taraftar is a free app that shows matches, scores and standings for the football teams you
+follow (Android app `com.sahin.taraftar` and a web version).
 
 **Sports data.** Match, score, fixture and standings information comes from third-party sports
 data sources and is served via GitHub Pages. We do not send any information about you to fetch
@@ -64,7 +64,7 @@ teams you follow (e.g. a team's goal alerts). Our server does not know who follo
 notifications are sent to team topics. When you turn off a notification type or remove a team,
 the device unsubscribes from the related topic.
 
-**Ads and analytics.** Futbol Takip contains no ads, analytics or crash reporting tools.
+**Ads and analytics.** Taraftar contains no ads, analytics or crash reporting tools.
 
 **Deleting your account and data.** In the app, go to **Hesap (Account) → Hesabımı sil (Delete my
 account)** to permanently delete your team list, notification settings and account from the cloud

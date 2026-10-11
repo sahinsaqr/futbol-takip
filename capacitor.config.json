@@ -1,6 +1,6 @@
 {
-  "appId": "com.sahin.futboltakip",
-  "appName": "Futbol Takip",
+  "appId": "com.sahin.taraftar",
+  "appName": "Taraftar",
   "webDir": "www",
   "plugins": {
     "FirebaseAuthentication": {
