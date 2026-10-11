@@ -20,9 +20,11 @@ function zamanAsimi(soz, ms = ZAMAN_ASIMI) {
   return Promise.race([soz, new Promise((_, red) => { z = setTimeout(() => red(new Error('zaman aşımı')), ms); })])
     .finally(() => clearTimeout(z));
 }
-const hataMetni = (h) => `${h?.code || ''} ${h?.message || ''}`;
+// Android eklentisi hata kodunu cihaz diliyle küçültüyor; Türkçede "auth/credentıal-already-ın-use"
+// gelir. Noktasız ı'lar i'ye çevrilmezse aşağıdaki desenler eşleşmez.
+const hataMetni = (h) => `${h?.code || ''} ${h?.message || ''}`.replace(/ı/g, 'i').replace(/İ/g, 'I');
 const iptalMi = (h) => /cancel|popup-closed|user-cancelled/i.test(hataMetni(h));
-const hesapVarMi = (h) => /already-in-use|account-exists|credential-already/i.test(hataMetni(h));
+const hesapVarMi = (h) => /already-in-use|account-exists|credential-already|already associated with a different user/i.test(hataMetni(h));
 
 function kullaniciBicim(u) {
   if (!u) return null;

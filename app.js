@@ -398,17 +398,20 @@ function cizPuan() {
 }
 
 // ---- Takım ekle
+// Türkçe küçültmede I → ı olur ("Inter" → "ınter"); "inter" ya da "İnter" yazan da bulsun diye ı/i aynı sayılır
+const aramaBicim = (s) => (s || '').toLocaleLowerCase('tr').replace(/ı/g, 'i');
+
 function cizEkle() {
   if (!durum.ligler.length) return bosEkran('Takım listesi yok', 'Veriler hazır olduğunda takımları buradan ekleyebileceksin.', false);
   if (!durum.ekleLig) durum.ekleLig = durum.ligler[0].kod;
   const ids = takipIdler();
-  const q = durum.arama.trim().toLocaleLowerCase('tr');
+  const q = aramaBicim(durum.arama.trim());
   let takimlar;
   if (q) {
     const gorulen = new Set();
     takimlar = [];
     for (const l of durum.ligler) for (const t of l.takimlar || []) {
-      if (!gorulen.has(t.id) && t.ad.toLocaleLowerCase('tr').includes(q)) { gorulen.add(t.id); takimlar.push({ ...t, lig: l.kod }); }
+      if (!gorulen.has(t.id) && aramaBicim(t.ad).includes(q)) { gorulen.add(t.id); takimlar.push({ ...t, lig: l.kod }); }
     }
   } else {
     const lig = durum.ligler.find((l) => l.kod === durum.ekleLig) || durum.ligler[0];
