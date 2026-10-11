@@ -400,8 +400,11 @@ function cizPuan() {
 // ---- Takım ekle
 // Türkçe küçültmede I → ı olur ("Inter" → "ınter"); "inter" ya da "İnter" yazan da bulsun diye ı/i aynı sayılır.
 // Harf işaretleri de atılır: "besiktas" Beşiktaş'ı, "munchen" München'i bulur (ş/ç/ğ/ü/ö ve é, ñ gibi).
-const aramaBicim = (s) => (s || '').toLocaleLowerCase('tr').replace(/ı/g, 'i')
+// İşaret olarak ayrışmayan harfler (ø, æ, ß, ł, đ...) elle sadeleştirilir: "bodo" Bodø'yu bulur.
+const OZEL_HARF = { ø: 'o', æ: 'ae', œ: 'oe', ß: 'ss', ł: 'l', đ: 'd', ð: 'd', þ: 'th' };
+const isaretsiz = (s) => (s || '').toLocaleLowerCase('tr').replace(/ı/g, 'i')
   .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const aramaBicim = (s) => isaretsiz(s).replace(/[øæœßłđðþ]/g, (h) => OZEL_HARF[h]);
 
 function cizEkle() {
   if (!durum.ligler.length) return bosEkran('Takım listesi yok', 'Veriler hazır olduğunda takımları buradan ekleyebileceksin.', false);
