@@ -239,6 +239,9 @@ function durumSatiri() {
 const ilgili = (m) => { const ids = takipIdler(); return ids.has(m.ev.id) || ids.has(m.dep.id); };
 
 function ciz() {
+  if (surukleniyor) { cizBekliyor = true; return; }
+  siralayici?.destroy();
+  siralayici = null;
   document.querySelectorAll('.alt-menu button').forEach((b) =>
     b.classList.toggle('aktif', b.dataset.sekme === durum.sekme));
   const icerik = $('#icerik');
@@ -247,6 +250,7 @@ function ciz() {
     (ciziciler[durum.sekme] || cizTakimlar)() + onayKutusu();
   durumSatiri();
   hedefeGit();
+  if (durum.sirala && durum.sekme === 'takimlar') suruklemeKur();
 }
 
 function bosEkran(baslik, metin, dugme = true) {
@@ -354,18 +358,54 @@ function cizTakimlar() {
   return `${ust}<div class="kartlar iki">${kartlar.join('')}</div>`;
 }
 
-const OK_YUKARI = '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7.4 15.4 12 10.8l4.6 4.6L18 14l-6-6-6 6z"/></svg>';
-const OK_ASAGI = '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7.4 8.6 12 13.2l4.6-4.6L18 10l-6 6-6-6z"/></svg>';
+const TUTAMAC = '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 7h16v2H4zm0 4h16v2H4zm0 4h16v2H4z"/></svg>';
 
-// Elle sıralama: telefonda sürükle-bırak yerine yukarı/aşağı okları
+// Elle sıralama: sağdaki tutamaçtan (≡) sürükle-bırak; satırın geri kalanında sayfa kayar.
+// Klavyede tutamaç odaklıyken yukarı/aşağı ok tuşları da taşır.
 function cizSiralama() {
-  const son = durum.takip.length - 1;
-  return `<div class="sirala-cubuk"><span>Oklarla sırala</span><button class="dugme kucuk" id="siralaBitti">Bitti</button></div>
-    <div class="kartlar sik">${durum.takip.map((t, i) => `<div class="kart sirala-kart" id="sira-${kacis(t.id)}">
+  return `<div class="sirala-cubuk"><span>≡ tutamaçtan tutup sürükle</span><button class="dugme kucuk" id="siralaBitti">Bitti</button></div>
+    <div class="kartlar sik" id="siraListe">${durum.takip.map((t) => `<div class="kart sirala-kart" id="sira-${kacis(t.id)}">
       ${logoHtml(t, 'orta')}<div class="ad">${kacis(t.ad)}<small>${kacis(ligAdi(t.lig))}</small></div>
-      <button class="ok" data-tasi="-1" data-id="${kacis(t.id)}" aria-label="${kacis(t.ad)} yukarı" ${i === 0 ? 'disabled' : ''}>${OK_YUKARI}</button>
-      <button class="ok" data-tasi="1" data-id="${kacis(t.id)}" aria-label="${kacis(t.ad)} aşağı" ${i === son ? 'disabled' : ''}>${OK_ASAGI}</button>
+      <button class="tutamac" data-id="${kacis(t.id)}" aria-label="${kacis(t.ad)}: sürükle ya da ok tuşlarıyla taşı">${TUTAMAC}</button>
     </div>`).join('')}</div>`;
+}
+
+// SortableJS (kutuphane/, internetsiz de açılsın diye projede) yalnızca sıralama açılınca yüklenir
+let sortableYukleme = null;
+let siralayici = null;
+let surukleniyor = false;
+let cizBekliyor = false;   // sürüklerken gelen yenileme, bırakınca çizilir
+
+async function suruklemeKur() {
+  sortableYukleme ??= import('./kutuphane/Sortable.min.js').then(() => self.Sortable);
+  const Sortable = await sortableYukleme;
+  const liste = $('#siraListe');
+  if (!liste || siralayici?.el === liste) return;
+  siralayici = Sortable.create(liste, {
+    handle: '.tutamac',
+    forceFallback: true,        // dokunmatik ve farede aynı davranış
+    fallbackOnBody: true,
+    fallbackTolerance: 3,
+    animation: 180,
+    ghostClass: 'sirala-yer',
+    fallbackClass: 'sirala-tasinan',
+    scrollSensitivity: 120,     // alt menü ve üst başlık kenarı örtüyor
+    scrollSpeed: 14,
+    onChoose: () => {
+      if (window.Capacitor?.isPluginAvailable?.('Haptics')) window.Capacitor.Plugins.Haptics.impact({ style: 'LIGHT' }).catch(() => {});
+    },
+    onStart: () => { surukleniyor = true; },
+    onEnd: ({ oldIndex, newIndex }) => {
+      surukleniyor = false;
+      if (oldIndex !== newIndex) {
+        const [t] = durum.takip.splice(oldIndex, 1);
+        durum.takip.splice(newIndex, 0, t);
+        depoYaz(DEPO, durum.takip);
+        bulutaKaydet();
+      }
+      if (cizBekliyor) { cizBekliyor = false; ciz(); }
+    },
+  });
 }
 
 function takimTasi(id, yon) {
@@ -380,8 +420,7 @@ function takimTasi(id, yon) {
   const once = kart().getBoundingClientRect().top;
   ciz();
   window.scrollBy(0, kart().getBoundingClientRect().top - once);
-  const dugme = $(`[data-id="${CSS.escape(id)}"][data-tasi="${yon}"]`);
-  (dugme.disabled ? $(`[data-id="${CSS.escape(id)}"][data-tasi="${-yon}"]`) : dugme).focus({ preventScroll: true });
+  $(`.tutamac[data-id="${CSS.escape(id)}"]`).focus({ preventScroll: true });
 }
 
 function siralamaModu(acik) {
@@ -801,7 +840,6 @@ document.addEventListener('click', (e) => {
   else if (h.dataset.bildirim) bildirimDegistir(h.dataset.bildirim);
   else if (h.dataset.tema) temaDegistir(h.dataset.tema);
   else if (h.dataset.siralama) siralamaDegistir(h.dataset.siralama);
-  else if (h.dataset.tasi) takimTasi(h.dataset.id, Number(h.dataset.tasi));
   else if (h.id === 'siralaBtn') siralamaModu(true);
   else if (h.id === 'siralaBitti') siralamaModu(false);
   else if (h.id === 'yenileBtn') yukle();
@@ -816,6 +854,10 @@ document.addEventListener('click', (e) => {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && durum.onay) { durum.onay = null; ciz(); }
   else if (e.key === 'Escape' && durum.sirala) siralamaModu(false);
+  else if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.target.classList?.contains('tutamac')) {
+    e.preventDefault();
+    takimTasi(e.target.dataset.id, e.key === 'ArrowUp' ? -1 : 1);
+  }
 });
 document.addEventListener('input', (e) => {
   if (e.target.id !== 'arama') return;
