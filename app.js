@@ -398,8 +398,10 @@ function cizPuan() {
 }
 
 // ---- Takım ekle
-// Türkçe küçültmede I → ı olur ("Inter" → "ınter"); "inter" ya da "İnter" yazan da bulsun diye ı/i aynı sayılır
-const aramaBicim = (s) => (s || '').toLocaleLowerCase('tr').replace(/ı/g, 'i');
+// Türkçe küçültmede I → ı olur ("Inter" → "ınter"); "inter" ya da "İnter" yazan da bulsun diye ı/i aynı sayılır.
+// Harf işaretleri de atılır: "besiktas" Beşiktaş'ı, "munchen" München'i bulur (ş/ç/ğ/ü/ö ve é, ñ gibi).
+const aramaBicim = (s) => (s || '').toLocaleLowerCase('tr').replace(/ı/g, 'i')
+  .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 function cizEkle() {
   if (!durum.ligler.length) return bosEkran('Takım listesi yok', 'Veriler hazır olduğunda takımları buradan ekleyebileceksin.', false);
