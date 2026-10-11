@@ -376,6 +376,12 @@ let siralayici = null;
 let surukleniyor = false;
 let cizBekliyor = false;   // sürüklerken gelen yenileme, bırakınca çizilir
 
+// Android titreşimi (@capacitor/haptics): tutunca hafif darbe, bırakınca 12 ms'lik tık
+const titret = {
+  tut: () => { if (Bulut.yerel) window.Capacitor.Plugins.Haptics.impact({ style: 'LIGHT' }).catch(() => {}); },
+  birak: () => { if (Bulut.yerel) window.Capacitor.Plugins.Haptics.vibrate({ duration: 12 }).catch(() => {}); },
+};
+
 async function suruklemeKur() {
   sortableYukleme ??= import('./kutuphane/Sortable.min.js').then(() => self.Sortable);
   const Sortable = await sortableYukleme;
@@ -391,12 +397,11 @@ async function suruklemeKur() {
     fallbackClass: 'sirala-tasinan',
     scrollSensitivity: 120,     // alt menü ve üst başlık kenarı örtüyor
     scrollSpeed: 14,
-    onChoose: () => {
-      if (window.Capacitor?.isPluginAvailable?.('Haptics')) window.Capacitor.Plugins.Haptics.impact({ style: 'LIGHT' }).catch(() => {});
-    },
+    onChoose: titret.tut,
     onStart: () => { surukleniyor = true; },
     onEnd: ({ oldIndex, newIndex }) => {
       surukleniyor = false;
+      titret.birak();
       if (oldIndex !== newIndex) {
         const [t] = durum.takip.splice(oldIndex, 1);
         durum.takip.splice(newIndex, 0, t);
