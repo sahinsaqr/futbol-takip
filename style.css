@@ -274,13 +274,29 @@ tr.takipte .isim { font-weight: 800; }
 .politika h3 { font-size: 15px; margin: 16px 0 4px; }
 .politika p { font-size: 14px; }
 .politika-link a { color: var(--vurgu); word-break: break-all; }
-/* Görünüm Modu (Sistem / Açık / Koyu) seçici — Sudoku'daki tema seçiciyle aynı biçim */
-.tema-satir { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 12px; padding: 14px 16px; }
-.tema-satir b { display: block; font-size: 15px; }
-.tema-satir small { color: var(--yazi-2); font-size: 13px; }
-.tema-secici { display: flex; gap: 4px; background: var(--yuzey-2); border: 1px solid var(--cizgi); border-radius: 999px; padding: 3px; }
-.tema-secici button {
+/* Hesap > Görünüm: seçenek satırları (Görünüm Modu, Takım Sıralaması) — Sudoku'daki tema seçiciyle aynı biçim */
+.ayar-satir { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 12px; padding: 14px 16px; }
+.ayar-satir b { display: block; font-size: 15px; }
+.ayar-satir small { color: var(--yazi-2); font-size: 13px; }
+.ayar-secici { display: flex; gap: 4px; background: var(--yuzey-2); border: 1px solid var(--cizgi); border-radius: 999px; padding: 3px; }
+.ayar-secici button {
   background: none; border: 0; color: var(--yazi-2); padding: 6px 12px; border-radius: 999px;
   font-size: 12px; font-weight: 700; white-space: nowrap; transition: background .2s, color .2s;
 }
-.tema-secici button.aktif { background: var(--vurgu-zemin); color: var(--vurgu-zemin-yazi); }
+.ayar-secici button.aktif { background: var(--vurgu-zemin); color: var(--vurgu-zemin-yazi); }
+.ayar-satir + .ayar-satir { border-top: 1px solid var(--cizgi); }
+
+/* --------------------------------------------------- takım sıralama */
+.sirala-cubuk { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin: -4px 0 10px; }
+.sirala-cubuk span { margin-right: auto; color: var(--yazi-2); font-size: 13px; }
+.dugme.kucuk { padding: 7px 14px; font-size: 13px; border-radius: 10px; }
+.kartlar.sik { gap: 8px; }
+.sirala-kart { display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 14px; }
+.sirala-kart .ad { flex: 1; min-width: 0; font-weight: 700; line-height: 1.25; }
+.sirala-kart .ad small { display: block; font-weight: 400; font-size: 12px; color: var(--yazi-2); }
+.ok {
+  width: 44px; height: 44px; flex: none; display: grid; place-items: center;
+  border: 1px solid var(--cizgi); border-radius: 10px; background: var(--yuzey-2); color: var(--yazi);
+}
+.ok:disabled { opacity: .3; cursor: default; }
+.ok:focus-visible { outline: 2px solid var(--vurgu); outline-offset: 1px; }

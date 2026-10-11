@@ -7,6 +7,7 @@ const DEPO = 'ft_takip';
 const SEKME_DEPO = 'ft_sekme';
 const BILDIRIM_DEPO = 'ft_bildirim';
 const TEMA_DEPO = 'ft_tema';   // index.html'deki ilk çizim betiği de bunu okur
+const SIRALAMA_DEPO = 'ft_siralama';
 const AZAMI_TAKIM = 50;   // Firestore kuralıyla aynı
 // Android'de dosyalar uygulamanın içinden gelir; veri GitHub Pages'ten okunur
 const VERI_KOK = Bulut.yerel ? 'https://taraftar.mlkcraft.com/' : '';
@@ -22,6 +23,12 @@ const GIZLILIK_OZETI = [
   ['İletişim', `Gizlilikle ilgili soruların için: ${FEEDBACK_EMAIL}`],
 ];
 const TEMA_ADLARI = { sistem: '📱 Sistem', acik: '☀️ Açık', koyu: '🌙 Koyu' };
+const SIRALAMA_ADLARI = { elle: '✋ Elle', otomatik: '⚡ Otomatik', karisik: '🔀 Karışık' };
+const SIRALAMA_ACIKLAMA = {
+  elle: 'Takımlar senin belirlediğin sırada durur',
+  otomatik: 'Canlı maçı olanlar üstte, sonra sıradaki maçı en yakın olanlar',
+  karisik: 'Senin sıran geçerli; maçı canlı olanlar geçici olarak üste çıkar',
+};
 const TEMA_RENGI = { acik: '#f2f5f3', koyu: '#0e1512' };  // --zemin; index.html ile aynı
 const BILDIRIM_ADLARI = {
   gol: 'Goller',
@@ -45,6 +52,8 @@ const durum = {
   hata: null,
   bildirim: { ...VARSAYILAN_BILDIRIM, ...depoOku(BILDIRIM_DEPO, {}) },
   tema: depoOku(TEMA_DEPO, 'sistem'),  // sistem | acik | koyu
+  siralama: depoOku(SIRALAMA_DEPO, 'karisik'),  // elle | otomatik | karisik
+  sirala: false,        // Takımlarım'da elle sıralama (oklar) açık
   bulut: 'baglaniyor',  // baglaniyor | hazir | hata
   islem: false,         // giriş/çıkış/silme sürüyor
   onay: null,           // sayfa içi pencere: 'sil' | 'gizlilik'
@@ -290,13 +299,33 @@ function gunlereGore(maclar, ters = false) {
 }
 
 // ---- Takımlarım
+function takimDurumu(t, maclar) {
+  const tm = takimMaclari(t.id, maclar);
+  return {
+    tm,
+    canli: tm.find((m) => m.durum === 'in'),
+    sonraki: tm.find((m) => m.durum === 'pre' && !ERTELENDI.has(m.durum_kodu) && new Date(m.tarih) > Date.now() - 3 * 3600e3),
+  };
+}
+
+/** Kartların gösterim sırası. Yalnızca takımların canlı/sıradaki maçına bakar; bunlar
+    değişmedikçe (maç başlamadıkça/bitmedikçe) skor yenilemesinde kartlar yer değiştirmez. */
+function siraliTakimlar(maclar) {
+  const liste = durum.takip.map((t, elle) => ({ t, elle, ...takimDurumu(t, maclar) }));
+  if (durum.siralama === 'elle') return liste;
+  const canliOnce = (a, b) => !!b.canli - !!a.canli;
+  if (durum.siralama === 'karisik') return liste.sort((a, b) => canliOnce(a, b) || a.elle - b.elle);
+  const zaman = (x) => (x.canli || !x.sonraki ? Infinity : new Date(x.sonraki.tarih).getTime());
+  // Infinity - Infinity = NaN (yanlış) → elle sıraya düşer
+  return liste.sort((a, b) => canliOnce(a, b) || zaman(a) - zaman(b) || a.elle - b.elle);
+}
+const siralanabilir = () => durum.siralama !== 'otomatik' && durum.takip.length > 1;
+
 function cizTakimlar() {
   if (!durum.takip.length) return bosEkran('Henüz takım eklemedin', 'Takip etmek istediğin takımları ekle; maçları, skorları ve puan durumu burada görünsün.');
+  if (durum.sirala) return cizSiralama();
   const maclar = tumMaclar();
-  const kartlar = durum.takip.map((t) => {
-    const tm = takimMaclari(t.id, maclar);
-    const canli = tm.find((m) => m.durum === 'in');
-    const sonraki = tm.find((m) => m.durum === 'pre' && !ERTELENDI.has(m.durum_kodu) && new Date(m.tarih) > Date.now() - 3 * 3600e3);
+  const kartlar = siraliTakimlar(maclar).map(({ t, tm, canli, sonraki }) => {
     const bitenler = tm.filter((m) => m.durum === 'post');
     const son = bitenler[bitenler.length - 1];
     const form = bitenler.slice(-5).map((m) => sonuc(m, t.id)).filter(Boolean);
@@ -321,7 +350,44 @@ function cizTakimlar() {
       ${parcalar.join('')}
     </article>`;
   });
-  return `<div class="kartlar iki">${kartlar.join('')}</div>`;
+  const ust = siralanabilir() ? '<div class="sirala-cubuk"><button class="dugme ikincil kucuk" id="siralaBtn">⇅ Sırala</button></div>' : '';
+  return `${ust}<div class="kartlar iki">${kartlar.join('')}</div>`;
+}
+
+const OK_YUKARI = '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7.4 15.4 12 10.8l4.6 4.6L18 14l-6-6-6 6z"/></svg>';
+const OK_ASAGI = '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7.4 8.6 12 13.2l4.6-4.6L18 10l-6 6-6-6z"/></svg>';
+
+// Elle sıralama: telefonda sürükle-bırak yerine yukarı/aşağı okları
+function cizSiralama() {
+  const son = durum.takip.length - 1;
+  return `<div class="sirala-cubuk"><span>Oklarla sırala</span><button class="dugme kucuk" id="siralaBitti">Bitti</button></div>
+    <div class="kartlar sik">${durum.takip.map((t, i) => `<div class="kart sirala-kart" id="sira-${kacis(t.id)}">
+      ${logoHtml(t, 'orta')}<div class="ad">${kacis(t.ad)}<small>${kacis(ligAdi(t.lig))}</small></div>
+      <button class="ok" data-tasi="-1" data-id="${kacis(t.id)}" aria-label="${kacis(t.ad)} yukarı" ${i === 0 ? 'disabled' : ''}>${OK_YUKARI}</button>
+      <button class="ok" data-tasi="1" data-id="${kacis(t.id)}" aria-label="${kacis(t.ad)} aşağı" ${i === son ? 'disabled' : ''}>${OK_ASAGI}</button>
+    </div>`).join('')}</div>`;
+}
+
+function takimTasi(id, yon) {
+  const i = durum.takip.findIndex((t) => t.id === id);
+  const j = i + yon;
+  if (i < 0 || j < 0 || j >= durum.takip.length) return;
+  [durum.takip[i], durum.takip[j]] = [durum.takip[j], durum.takip[i]];
+  depoYaz(DEPO, durum.takip);
+  bulutaKaydet();
+  // taşınan kart parmağın altında kalsın, diğerleri onun etrafında kaysın
+  const kart = () => document.getElementById(`sira-${id}`);
+  const once = kart().getBoundingClientRect().top;
+  ciz();
+  window.scrollBy(0, kart().getBoundingClientRect().top - once);
+  const dugme = $(`[data-id="${CSS.escape(id)}"][data-tasi="${yon}"]`);
+  (dugme.disabled ? $(`[data-id="${CSS.escape(id)}"][data-tasi="${-yon}"]`) : dugme).focus({ preventScroll: true });
+}
+
+function siralamaModu(acik) {
+  durum.sirala = acik;
+  ciz();
+  window.scrollTo({ top: 0 });
 }
 
 function macHtmlIc(m) {
@@ -476,12 +542,15 @@ function bulutaKaydet() {
   }, 800);
 }
 
-/** Buluttaki liste ile cihazdaki liste birleştirilir, sonra iki yere de yazılır */
+/** Buluttaki liste ile cihazdaki liste birleştirilir, sonra iki yere de yazılır.
+    Sıra buluttan gelir (başka cihazda yapılan sıralama); yalnız bu cihazda olanlar sona eklenir. */
 async function esitle() {
   const belge = await Bulut.belgeOku();
   const ids = takipIdler();
-  const eklenen = belge.takimlar.filter((t) => t?.id && !ids.has(t.id));
-  const birlesik = [...durum.takip, ...eklenen].slice(0, AZAMI_TAKIM);
+  const bulutta = belge.takimlar.filter((t) => t?.id);
+  const buluttaIds = new Set(bulutta.map((t) => t.id));
+  const eklenen = bulutta.filter((t) => !ids.has(t.id));
+  const birlesik = [...bulutta, ...durum.takip.filter((t) => !buluttaIds.has(t.id))].slice(0, AZAMI_TAKIM);
   if (!belge.bos) durum.bildirim = belge.bildirim;
   const degisti = belge.bos || birlesik.length !== belge.takimlar.length;
   durum.takip = birlesik;
@@ -567,6 +636,12 @@ function temaUygula() {
 }
 sistemAcik.addEventListener('change', () => { if (durum.tema === 'sistem') temaUygula(); });
 
+function siralamaDegistir(siralama) {
+  durum.siralama = siralama;
+  depoYaz(SIRALAMA_DEPO, siralama);
+  ciz();
+}
+
 function temaDegistir(tema) {
   durum.tema = tema;
   depoYaz(TEMA_DEPO, tema);
@@ -576,6 +651,15 @@ function temaDegistir(tema) {
 
 // ---- Hesap
 const GOOGLE_LOGO = '<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
+
+// Hesap'taki seçenek satırı (Görünüm Modu, Takım Sıralaması): data-<ad>="<değer>" düğmeleri
+function secimSatiri(baslik, aciklama, ad, secenekler, secili) {
+  return `<div class="ayar-satir">
+      <span><b>${kacis(baslik)}</b><small>${kacis(aciklama)}</small></span>
+      <div class="ayar-secici" role="group" aria-label="${kacis(baslik)}">${Object.entries(secenekler).map(([deger, etiket]) =>
+        `<button data-${ad}="${deger}" class="${secili === deger ? 'aktif' : ''}" aria-pressed="${secili === deger}">${etiket}</button>`).join('')}</div>
+    </div>`;
+}
 
 function cizHesap() {
   const k = Bulut.kullanici;
@@ -618,10 +702,9 @@ function cizHesap() {
     ${bildirim}
 
     <h2 class="bolum-baslik">Görünüm</h2>
-    <div class="kart tema-satir">
-      <span><b>Görünüm Modu</b><small>Sistem, cihazının açık/koyu ayarını izler</small></span>
-      <div class="tema-secici" role="group" aria-label="Görünüm modu">${Object.entries(TEMA_ADLARI).map(([tema, ad]) =>
-        `<button data-tema="${tema}" class="${durum.tema === tema ? 'aktif' : ''}" aria-pressed="${durum.tema === tema}">${ad}</button>`).join('')}</div>
+    <div class="kart ayarlar">
+      ${secimSatiri('Görünüm Modu', 'Sistem, cihazının açık/koyu ayarını izler', 'tema', TEMA_ADLARI, durum.tema)}
+      ${secimSatiri('Takım Sıralaması', SIRALAMA_ACIKLAMA[durum.siralama], 'siralama', SIRALAMA_ADLARI, durum.siralama)}
     </div>
 
     <h2 class="bolum-baslik">Uygulama hakkında</h2>
@@ -678,6 +761,7 @@ Bulut.bildirimeDokununca((veri) => {
   if (!veri.mac) return;
   durum.hedefMac = String(veri.mac);
   durum.sekme = 'takimlar';
+  durum.sirala = false;
   yukle({ sessiz: true });
 });
 Bulut.bildirimGelince((b) => {
@@ -688,14 +772,16 @@ Bulut.bildirimGelince((b) => {
 // ------------------------------------------------------------------ olaylar
 function sekmeyeGec(sekme) {
   durum.sekme = sekme;
+  durum.sirala = false;
   depoYaz(SEKME_DEPO, durum.sekme);
   ciz();
   window.scrollTo({ top: 0 });
 }
 
-// Android geri tuşu: pencere → alt görünüm (takım araması) → Takımlarım → arka plan
+// Android geri tuşu: pencere → sıralama modu → alt görünüm (takım araması) → Takımlarım → arka plan
 function geriTusu() {
   if (durum.onay) { durum.onay = null; ciz(); return; }
+  if (durum.sirala) { siralamaModu(false); return; }
   if (durum.sekme === 'ekle' && durum.arama) { durum.arama = ''; ciz(); return; }
   if (durum.sekme !== 'takimlar') { sekmeyeGec('takimlar'); return; }
   const App = window.Capacitor.Plugins.App;
@@ -714,6 +800,10 @@ document.addEventListener('click', (e) => {
   else if (h.dataset.takim) takimDegistir(h.dataset.takim, h.dataset.lig);
   else if (h.dataset.bildirim) bildirimDegistir(h.dataset.bildirim);
   else if (h.dataset.tema) temaDegistir(h.dataset.tema);
+  else if (h.dataset.siralama) siralamaDegistir(h.dataset.siralama);
+  else if (h.dataset.tasi) takimTasi(h.dataset.id, Number(h.dataset.tasi));
+  else if (h.id === 'siralaBtn') siralamaModu(true);
+  else if (h.id === 'siralaBitti') siralamaModu(false);
   else if (h.id === 'yenileBtn') yukle();
   else if (h.id === 'googleBtn') googleIleGiris();
   else if (h.id === 'cikisBtn') cikisYap();
@@ -725,6 +815,7 @@ document.addEventListener('click', (e) => {
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && durum.onay) { durum.onay = null; ciz(); }
+  else if (e.key === 'Escape' && durum.sirala) siralamaModu(false);
 });
 document.addEventListener('input', (e) => {
   if (e.target.id !== 'arama') return;
@@ -747,7 +838,7 @@ function zamanlayiciKur() {
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && (!durum.sonYukleme || Date.now() - durum.sonYukleme > 60e3)) yukle({ sessiz: true });
 });
-setInterval(() => { if (document.visibilityState === 'visible' && durum.sekme === 'takimlar') ciz(); }, 60e3);
+setInterval(() => { if (document.visibilityState === 'visible' && durum.sekme === 'takimlar' && !durum.sirala) ciz(); }, 60e3);
 
 if (!Bulut.yerel && 'serviceWorker' in navigator && location.protocol === 'https:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});

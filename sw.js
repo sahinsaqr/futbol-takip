@@ -1,5 +1,5 @@
 // Uygulama dosyalarını önbelleğe alır; internet yokken son veriler gösterilir.
-const SURUM = 'taraftar-v3';
+const SURUM = 'taraftar-v4';
 const KABUK = ['./', 'index.html', 'style.css', 'app.js', 'bulut.js', 'firebase-ayar.js', 'manifest.webmanifest',
   'ikonlar/ikon.svg', 'ikonlar/ikon-192.png', 'ikonlar/apple-touch-icon.png'];
 
