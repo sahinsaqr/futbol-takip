@@ -657,14 +657,28 @@ Bulut.bildirimGelince((b) => {
 });
 
 // ------------------------------------------------------------------ olaylar
+function sekmeyeGec(sekme) {
+  durum.sekme = sekme;
+  depoYaz(SEKME_DEPO, durum.sekme);
+  ciz();
+  window.scrollTo({ top: 0 });
+}
+
+// Android geri tuşu: pencere → alt görünüm (takım araması) → Takımlarım → arka plan
+function geriTusu() {
+  if (durum.onay) { durum.onay = null; ciz(); return; }
+  if (durum.sekme === 'ekle' && durum.arama) { durum.arama = ''; ciz(); return; }
+  if (durum.sekme !== 'takimlar') { sekmeyeGec('takimlar'); return; }
+  const App = window.Capacitor.Plugins.App;
+  App.minimizeApp().catch(() => App.exitApp());
+}
+if (Bulut.yerel) window.Capacitor.Plugins.App?.addListener('backButton', geriTusu);
+
 document.addEventListener('click', (e) => {
   const h = e.target.closest('button, a');
   if (!h) return;
   if (h.dataset.sekme || h.dataset.git) {
-    durum.sekme = h.dataset.sekme || h.dataset.git;
-    depoYaz(SEKME_DEPO, durum.sekme);
-    ciz();
-    window.scrollTo({ top: 0 });
+    sekmeyeGec(h.dataset.sekme || h.dataset.git);
   } else if (h.dataset.macsekme) { durum.macSekme = h.dataset.macsekme; ciz(); }
   else if (h.dataset.puanlig) { durum.puanLig = h.dataset.puanlig; ciz(); }
   else if (h.dataset.eklelig) { durum.ekleLig = h.dataset.eklelig; ciz(); }
