@@ -152,6 +152,7 @@ Bulut.bildirimIzniIste()          // Android 13+ izin penceresi
 - `gizlilik.html` (Türkçe + İngilizce): toplanan veriler (anonim kimlik, isteğe bağlı Google hesabı adı/e-postası,
   takip edilen takımlar, bildirim belirteci), amaç, saklama, hesap silme yolu, iletişim: info@mlkcraft.com.
 - Google Cloud konsolunda Firebase API anahtarlarını kısıtla (Android paket adı + SHA-1, web için `sahinsaqr.github.io` ve `taraftar.mlkcraft.com`).
+- Yayından önce noindex ve robots.txt kaldırılacak (`index.html`'deki `<meta name="robots" content="noindex, nofollow">` ve kök dizindeki `robots.txt`).
 
 ## Doğrulama listesi (her aşamadan sonra ilgili olanlar)
 
